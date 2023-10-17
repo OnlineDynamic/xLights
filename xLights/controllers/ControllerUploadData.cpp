@@ -25,6 +25,8 @@
 #define NO_VALUE_INT -9999
 #define NO_VALUE_STRING "unknown"
 
+#include <numeric>
+
 #include <log4cpp/Category.hh>
 
 #pragma region UDControllerPortModel
@@ -100,31 +102,39 @@ int UDControllerPortModel::GetChannelsPerPixel() const
     return _model->GetNodeChannelCount(_model->GetStringType());
 }
 
+int UDControllerPortModel::GetLightsPerNode() const
+{
+    return _model->GetLightsPerNode();
+}
+
 int UDControllerPortModel::GetDMXChannelOffset() const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("channel"))  return wxAtoi(node->GetAttribute("channel"));
+    if (node != nullptr && node->HasAttribute("channel"))
+        return wxAtoi(node->GetAttribute("channel"));
     return 1;
 }
 
 int UDControllerPortModel::GetBrightness(int currentBrightness) const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("brightness"))  return wxAtoi(node->GetAttribute("brightness"));
+    if (node != nullptr && node->HasAttribute("brightness"))  return wxAtoi(node->GetAttribute("brightness"));
     return currentBrightness;
 }
 
 int UDControllerPortModel::GetStartNullPixels(int currentStartNullPixels) const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("nullNodes"))  return wxAtoi(node->GetAttribute("nullNodes"));
+    if (node != nullptr && node->HasAttribute("nullNodes"))
+        return wxAtoi(node->GetAttribute("nullNodes"));
     return currentStartNullPixels;
 }
 
 int UDControllerPortModel::GetEndNullPixels(int currentEndNullPixels) const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("endNullNodes"))  return wxAtoi(node->GetAttribute("endNullNodes"));
+    if (node != nullptr && node->HasAttribute("endNullNodes"))
+        return wxAtoi(node->GetAttribute("endNullNodes"));
     return currentEndNullPixels;
 }
 
@@ -137,34 +147,38 @@ char UDControllerPortModel::GetSmartRemoteLetter() const
 
 float UDControllerPortModel::GetAmps(int defaultBrightness) const
 {
-    return ((float)AMPS_PER_PIXEL * (float)INTROUNDUPDIV(Channels() , GetChannelsPerPixel()) * GetBrightness(defaultBrightness)) / 100.0F;
+    return ((float)AMPS_PER_PIXEL * (float)INTROUNDUPDIV(Channels() * GetLightsPerNode(), GetChannelsPerPixel()) * GetBrightness(defaultBrightness)) / 100.0F;
 }
 
 int UDControllerPortModel::GetSmartTs(int currentSmartTs) const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("ts"))  return wxAtoi(node->GetAttribute("ts"));
+    if (node != nullptr && node->HasAttribute("ts"))
+        return wxAtoi(node->GetAttribute("ts"));
     return currentSmartTs;
 }
 
 float UDControllerPortModel::GetGamma(int currentGamma)  const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("gamma"))  return wxAtof(node->GetAttribute("gamma"));
+    if (node != nullptr && node->HasAttribute("gamma"))
+        return wxAtof(node->GetAttribute("gamma"));
     return currentGamma;
 }
 
 std::string UDControllerPortModel::GetColourOrder(const std::string& currentColourOrder) const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("colorOrder"))  return node->GetAttribute("colorOrder");
+    if (node != nullptr && node->HasAttribute("colorOrder"))
+        return node->GetAttribute("colorOrder");
     return currentColourOrder;
 }
 
 std::string UDControllerPortModel::GetDirection(const std::string& currentDirection) const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("reverse"))  return wxAtoi(node->GetAttribute("reverse")) == 1 ? "Reverse" : "Forward";
+    if (node != nullptr && node->HasAttribute("reverse"))
+        return wxAtoi(node->GetAttribute("reverse")) == 1 ? "Reverse" : "Forward";
     return currentDirection;
 }
 
@@ -172,7 +186,7 @@ int UDControllerPortModel::GetGroupCount(int currentGroupCount) const
 {
 
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("groupCount")) {
+    if (node != nullptr && node->HasAttribute("groupCount")) {
         return wxAtoi(node->GetAttribute("groupCount"));
     }
     return currentGroupCount;
@@ -181,7 +195,7 @@ int UDControllerPortModel::GetGroupCount(int currentGroupCount) const
 int UDControllerPortModel::GetZigZag(int currentZigZag) const
 {
     wxXmlNode* node = _model->GetControllerConnection();
-    if (node->HasAttribute("zigZag")) {
+    if (node != nullptr && node->HasAttribute("zigZag")) {
         return wxAtoi(node->GetAttribute("zigZag"));
     }
     return currentZigZag;
@@ -273,6 +287,21 @@ UDControllerPortModel* UDControllerPort::GetFirstModel() const
     for (const auto& it : _models) {
         if (*it < *first) {
             first = it;
+        }
+    }
+    return first;
+}
+
+UDControllerPortModel* UDControllerPort::GetFirstModel(int sr) const
+{
+    if (_models.size() == 0)
+        return nullptr;
+    UDControllerPortModel* first = nullptr;
+    for (const auto& it : _models) {
+        if (it->GetSmartRemote() == sr) {
+            if (first == nullptr || *it < *first) {
+                first = it;
+            }
         }
     }
     return first;
@@ -392,6 +421,17 @@ bool UDControllerPort::ContainsModel(Model* m, int string) const {
         }
     }
     return false;
+}
+
+int UDControllerPort::CountEmptySmartRemotesBefore(int sr) const
+{
+    int count = 0;
+
+    for (int s = 1; s < sr; ++s)
+    {
+        if (GetModelCount(s) == 0) ++count;
+    }
+    return count;
 }
 
 bool UDControllerPort::SetAllModelsToControllerName(const std::string& controllerName)
@@ -555,6 +595,7 @@ void UDControllerPort::CreateVirtualStrings(bool mergeSequential) {
                     current->_endChannel = it->GetStartChannel() + 2;
                     current->_startChannel = it->GetStartChannel();
                     current->_description = "DUMMY";
+                    current->_isDummy = true;
                     current->_protocol = it->GetProtocol();
                     current->_universe = it->GetUniverse();
                     current->_universeStartChannel = it->GetUniverseStartChannel();
@@ -611,6 +652,7 @@ void UDControllerPort::CreateVirtualStrings(bool mergeSequential) {
                         current->_endChannel = it->GetStartChannel() + 2;
                         current->_startChannel = it->GetStartChannel();
                         current->_description = "DUMMY";
+                        current->_isDummy = true;
                         current->_protocol = it->GetProtocol();
                         current->_universe = it->GetUniverse();
                         current->_universeStartChannel = it->GetUniverseStartChannel();
@@ -745,6 +787,17 @@ void UDControllerPort::CreateVirtualStrings(bool mergeSequential) {
         lastremote = vs->_smartRemote;
     }
 }
+
+int UDControllerPort::GetModelCount(int sr) const
+{
+    int count = 0;
+    for (const auto& it : _virtualStrings)
+    {
+        if (it->_smartRemote == sr && !it->_isDummy)
+            ++count;
+    }
+    return count;
+}
 #pragma endregion
 
 #pragma region Getters and Setters
@@ -857,6 +910,22 @@ int UDControllerPort::GetUniverseStartChannel() const {
 
 bool UDControllerPort::IsPixelProtocol() const {
     return ::IsPixelProtocol(_protocol);
+}
+
+float UDControllerPort::GetAmps(int defaultBrightness, int sr) const
+{
+    float amps = 0.0f;
+    int currentBrightness = defaultBrightness;
+
+    if (_type == "Pixel") {
+        for (const auto& m : _models) {
+            if (m->GetSmartRemote() == sr) {
+                currentBrightness = m->GetBrightness(currentBrightness);
+                amps += m->GetAmps(currentBrightness);
+            }
+        }
+    }
+    return amps;
 }
 
 float UDControllerPort::GetAmps(int defaultBrightness) const
@@ -1082,6 +1151,54 @@ std::vector<std::string> UDControllerPort::ExportAsCSV(ExportSettings::SETTINGS 
 
     return columns;
 }
+
+int UDControllerPort::GetSmartRemoteCount() const
+{
+    int count = 0;
+    for (const auto& it : _models)
+    {
+        count = std::max(count, it->GetSmartRemote());
+    }
+    return count;
+}
+
+std::string UDControllerPort::ExportAsJSON() const
+{
+    std::string json = "{\"port\":" + std::to_string(_port) + ",\"startchannel\":" + std::to_string(GetStartChannel()) +
+    ",\"universe\":" + std::to_string(GetUniverse()) + ",\"universestartchannel\":" + std::to_string(GetUniverseStartChannel()) +
+    ",\"channels\":" + std::to_string(Channels());
+
+    if (Channels() != 0 && _type != "Serial") {
+        json += ",\"pixels\":";
+        json += std::to_string( INTROUNDUPDIV(Channels(), GetChannelsPerPixel(GetProtocol())));
+    }
+    
+    json += ",\"models\":[";
+    bool first {true};
+    for (const auto& it : GetModels()) {
+        if(!first) json += ",";
+        json += "{\"name\":\"" + JSONSafe(it->GetName()) + "\"";
+        if (it->GetSmartRemote() > 0) {
+            json += ",\"smartremote\":\"" + std::to_string(it->GetSmartRemoteLetter()) + "\"";
+        }
+        json += ",\"description\":\"";
+        auto desp = it->GetModel()->description;
+        json += JSONSafe(desp);
+        json += "\"";
+        json += ",\"startchannel\":" + std::to_string(it->GetStartChannel());
+        json += ",\"universe\":" + std::to_string(it->GetUniverse());
+        json +=  ",\"universestartchannel\":" + std::to_string(it->GetUniverseStartChannel());
+        json += ",\"channels\":" + std::to_string(it->Channels());
+        
+        if (_type != "Serial") {
+            json += ",\"pixels\":" + std::to_string(it->Channels() / it->GetChannelsPerPixel());
+        }
+        json += "}";
+        first = false;
+    }
+    json += "]}";
+    return json;
+}
 #pragma endregion
 
 #pragma endregion
@@ -1213,6 +1330,18 @@ UDControllerPort* UDController::GetControllerPixelPort(int port) {
     return _pixelPorts[port];
 }
 
+int UDController::GetSmartRemoteCount(int port)
+{
+    int count = 0;
+    int basePort = ((port - 1) / 4) * 4;
+    for (int p = basePort; p < basePort + 4; ++p)
+    {
+        auto pp = GetControllerPixelPort(p + 1);
+        count = std::max(count, pp->GetSmartRemoteCount());
+    }
+    return count;
+}
+
 UDControllerPort* UDController::GetControllerSerialPort(int port) {
     if (!HasSerialPort(port)) {
         _serialPorts[port] = new UDControllerPort("Serial", port);
@@ -1312,6 +1441,16 @@ int UDController::GetMaxVirtualMatrixPort() const {
     return last;
 }
 
+void UDController::TagSmartRemotePorts()
+{
+    for (const auto& it : _pixelPorts) {
+        if (it.second->AtLeastOneModelIsUsingSmartRemote()) {
+            for (uint32_t i = ((it.first-1) / 4) * 4 + 1; i < ((it.first-1) / 4) * 4 + 5; ++i) {
+                GetControllerPixelPort(i)->TagSmartRemotePort();
+            }
+        }
+    }
+}
 
 bool UDController::HasSerialPort(int port) const {
     for (const auto& it : _serialPorts) {
@@ -1749,7 +1888,7 @@ bool UDController::Check(const ControllerCaps* rules, std::string& res) {
                 }
             }
 
-            int const sum = accumulate(bankSizes.begin(), bankSizes.end(), 0);
+            int const sum = std::accumulate(bankSizes.begin(), bankSizes.end(), 0);
             if (sum > rules->GetMaxPixelPortChannels()) {
                 // always expressed in terms of 3 channel pixels
                 res += wxString::Format("ERR: Controllers 'Bank' channel count [%d (%d)] is over the maximum [%d (%d)].\n", sum, sum / 3, rules->GetMaxPixelPortChannels(), rules->GetMaxPixelPortChannels() / 3).ToStdString();
@@ -1858,6 +1997,32 @@ std::vector<std::vector<std::string>> UDController::ExportAsCSV(ExportSettings::
 
     lines.insert(lines.begin(), header);
     return lines;
+}
+
+std::string UDController::ExportAsJSON()
+{
+    std::string json = "{\"pixelports\": [" ;
+    for (int i = 1; i <= GetMaxPixelPort(); i++) {
+        if(i != 1) json += ",";
+        json += GetControllerPixelPort(i)->ExportAsJSON();
+    }
+    json += "], \"serialports\": [" ;
+    for (int i = 1; i <= GetMaxSerialPort(); i++) {
+        if(i != 1) json += ",";
+        json += GetControllerSerialPort(i)->ExportAsJSON();
+    }
+    json += "], \"virtualmatrixports\": [" ;
+    for (auto &vm : _virtualMatrixPorts) {
+        if(vm.first != 1) json += ",";
+        json += vm.second->ExportAsJSON();
+    }
+    json += "], \"ledpanelmatrixports\": [" ;
+    for (auto &vm : _ledPanelMatrixPorts) {
+        if(vm.first != 1) json += ",";
+        json += vm.second->ExportAsJSON();
+    }
+    json += "]}" ;
+    return json;
 }
 
 Output* UDController::GetFirstOutput() const {

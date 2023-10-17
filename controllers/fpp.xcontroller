@@ -45,10 +45,12 @@
         <SupportsDefaultGamma/>
         <PreferredInputProtocol>DDP</PreferredInputProtocol>
         <ConfigDriver>FPP</ConfigDriver>
+		<FPS40Pixels>800</FPS40Pixels>
+		<FPS40Pixels_SR>720</FPS40Pixels_SR>
     </AbstractVariant>
     <AbstractVariant Name="FPPStringCape" Base="FPP:BaseFPPSettings">
         <MaxSerialPortChannels>512</MaxSerialPortChannels>
-        <MaxPixelPortChannels>4200</MaxPixelPortChannels>
+        <MaxPixelPortChannels>4800</MaxPixelPortChannels>
         <SupportsVirtualStrings/>
         <SupportsAutoLayout/>
         <SupportsRemotes/>
@@ -70,7 +72,7 @@
     </AbstractVariant>
     <AbstractVariant Name="FPPStringCapeTTYs" Base="FPP:BaseFPPSettings">
         <MaxSerialPortChannels>512</MaxSerialPortChannels>
-        <MaxPixelPortChannels>4200</MaxPixelPortChannels>
+        <MaxPixelPortChannels>4800</MaxPixelPortChannels>
         <SupportsVirtualStrings/>
         <SupportsAutoLayout/>
         <SupportsRemotes/>
@@ -81,8 +83,8 @@
             <Protocol>ws2811</Protocol>
         </PixelProtocols>
         <SerialProtocols>
-            <Protocol>DMX-Pro</Protocol>
             <Protocol>DMX-Open</Protocol>
+            <Protocol>DMX-Pro</Protocol>
             <Protocol>GenericSerial</Protocol>
             <Protocol>LOR</Protocol>
             <Protocol>Pixelnet-Lynx</Protocol>
@@ -105,8 +107,8 @@
             <Protocol>ws2811</Protocol>
         </PixelProtocols>
         <SerialProtocols>
-            <Protocol>DMX-Pro</Protocol>
             <Protocol>DMX-Open</Protocol>
+            <Protocol>DMX-Pro</Protocol>
             <Protocol>GenericSerial</Protocol>
             <Protocol>LOR</Protocol>
             <Protocol>Pixelnet-Lynx</Protocol>
@@ -129,8 +131,8 @@
             <Protocol>ws2811</Protocol>
         </PixelProtocols>
         <SerialProtocols>
-            <Protocol>DMX-Pro</Protocol>
             <Protocol>DMX-Open</Protocol>
+            <Protocol>DMX-Pro</Protocol>
             <Protocol>GenericSerial</Protocol>
             <Protocol>LOR</Protocol>
             <Protocol>Pixelnet-Lynx</Protocol>
@@ -147,16 +149,16 @@
     <Controller Name="LED Panels">
         <Variant Name="" ID="LED Panels" Base="FPP:BaseFPPSettings">
             <MaxPixelPort>0</MaxPixelPort>
-            <MaxSerialPort>0</MaxSerialPort>
-            <MaxSerialPortChannels>0</MaxSerialPortChannels>
+            <MaxSerialPort>1</MaxSerialPort>
+            <MaxSerialPortChannels>512</MaxSerialPortChannels>
             <MaxPixelPortChannels>0</MaxPixelPortChannels>
             <SupportsLEDPanelMatrix/>
             <SupportsAutoLayout/>
             <PixelProtocols>
             </PixelProtocols>
             <SerialProtocols>
-                <Protocol>DMX-Pro</Protocol>
                 <Protocol>DMX-Open</Protocol>
+                <Protocol>DMX-Pro</Protocol>
                 <Protocol>GenericSerial</Protocol>
                 <Protocol>LOR</Protocol>
                 <Protocol>Pixelnet-Lynx</Protocol>
@@ -168,8 +170,8 @@
     <Controller Name="Virtual Matrix">
         <Variant Name="" ID="Virtual Matrix" Base="FPP:BaseFPPSettings">
             <MaxPixelPort>0</MaxPixelPort>
-            <MaxSerialPort>0</MaxSerialPort>
-            <MaxSerialPortChannels>0</MaxSerialPortChannels>
+            <MaxSerialPort>1</MaxSerialPort>
+            <MaxSerialPortChannels>512</MaxSerialPortChannels>
             <MaxPixelPortChannels>0</MaxPixelPortChannels>
             <SupportsVirtualMatrix/>
             <SupportsLEDPanelMatrix/>
@@ -177,8 +179,8 @@
             <PixelProtocols>
             </PixelProtocols>
             <SerialProtocols>
-                <Protocol>DMX-Pro</Protocol>
                 <Protocol>DMX-Open</Protocol>
+                <Protocol>DMX-Pro</Protocol>
                 <Protocol>GenericSerial</Protocol>
                 <Protocol>LOR</Protocol>
                 <Protocol>Pixelnet-Lynx</Protocol>
@@ -190,8 +192,8 @@
     <Controller Name="Pi4 Virtual Matrix">
         <Variant Name="" ID="Pi4 Virtual Matrix" Base="FPP:BaseFPPSettings">
             <MaxPixelPort>0</MaxPixelPort>
-            <MaxSerialPort>0</MaxSerialPort>
-            <MaxSerialPortChannels>0</MaxSerialPortChannels>
+            <MaxSerialPort>1</MaxSerialPort>
+            <MaxSerialPortChannels>512</MaxSerialPortChannels>
             <MaxPixelPortChannels>0</MaxPixelPortChannels>
             <SupportsVirtualMatrix/>
             <MaxVirtualMatrixPorts>2</MaxVirtualMatrixPorts>
@@ -200,8 +202,8 @@
             <PixelProtocols>
             </PixelProtocols>
             <SerialProtocols>
-                <Protocol>DMX-Pro</Protocol>
                 <Protocol>DMX-Open</Protocol>
+                <Protocol>DMX-Pro</Protocol>
                 <Protocol>GenericSerial</Protocol>
                 <Protocol>LOR</Protocol>
                 <Protocol>Pixelnet-Lynx</Protocol>

@@ -58,7 +58,8 @@ public:
     bool GetVisible() const {return mVisible;}
     void SetVisible(bool visible) {mVisible = visible;}
 
-    virtual bool HasEffects() const;
+    [[nodiscard]] virtual bool HasEffects() const;
+    [[nodiscard]] virtual int GetEffectCount() const;
  
     virtual EffectLayer* GetEffectLayerFromExclusiveIndex(int index);
     EffectLayer* GetEffectLayer(int index) const;
@@ -142,9 +143,9 @@ protected:
     std::vector<EffectLayer*> mEffectLayers;
     std::list<EffectLayer *> mLayersToDelete;
     ChangeListener *listener = nullptr;
-    volatile int changeCount = 0;
-    volatile int dirtyStart = -1;
-    volatile int dirtyEnd = -1;
+    std::atomic<int> changeCount = 0;
+    std::atomic<int> dirtyStart = -1;
+    std::atomic<int> dirtyEnd = -1;
 
     std::recursive_timed_mutex changeLock;
 };
@@ -200,7 +201,7 @@ public:
     virtual void IncrementChangeCount(int startMs, int endMS) override;
     virtual NodeLayer* GetNodeEffectLayer(int index) const override { return nullptr; }
 
-    virtual bool HasEffects() const override;
+    [[nodiscard]] virtual bool HasEffects() const override;
 
 protected:
     ModelElement *mParentModel = nullptr;
@@ -220,7 +221,8 @@ public:
 
     int GetStrand() const { return mStrand; }
     
-    virtual bool HasEffects() const override;
+    [[nodiscard]] virtual bool HasEffects() const override;
+    [[nodiscard]] int GetEffectCount() const override;
     bool ShowNodes() const { return mShowNodes;}
     void ShowNodes(bool b) { mShowNodes = b;}
     NodeLayer *GetNodeLayer(int n, bool create);
@@ -257,7 +259,8 @@ class ModelElement : public Element
 
         virtual EffectLayer* GetEffectLayerFromExclusiveIndex(int index) override;
 
-        virtual bool HasEffects() const override;
+        [[nodiscard]] virtual bool HasEffects() const override;
+        [[nodiscard]] int GetEffectCount() const override;
         int GetSubModelAndStrandCount() const;
         int GetSubModelCount() const;
         SubModelElement *GetSubModel(int i) const;

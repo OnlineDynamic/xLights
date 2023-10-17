@@ -10,6 +10,8 @@
  * License: https://github.com/smeighan/xLights/blob/master/License.txt
  **************************************************************/
 
+// https://tsp.esta.org/tsp/documents/docs/E1-17_2015(R2020)_secure.zip
+
 #include "IPOutput.h"
 
 #include <wx/sckaddr.h>
@@ -53,9 +55,14 @@ class ArtNetOutput : public IPOutput
 public:
 
 #pragma region Constructors and Destructors
-    ArtNetOutput(wxXmlNode* node);
+    ArtNetOutput(wxXmlNode* node, bool isActive);
     ArtNetOutput();
+    ArtNetOutput(const ArtNetOutput& from);
     virtual ~ArtNetOutput() override;
+    virtual Output* Copy() override
+    {
+        return new ArtNetOutput(*this);
+    }
 #pragma endregion
 
 #pragma region Static Functions
@@ -103,14 +110,14 @@ public:
     virtual void AllOff() override;
 #pragma endregion
 
-    #pragma region UI
+#pragma region UI
 #ifndef EXCLUDENETWORKUI
-    virtual void AddProperties(wxPropertyGrid* propertyGrid, bool allSameSize, std::list<wxPGProperty*>& expandProperties) override;
-    virtual bool HandlePropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager) override;
-    virtual void AddMultiProperties(wxPropertyGrid* propertyGrid, bool allSameSize, std::list<wxPGProperty*>& expandProperties) override;
-    virtual bool HandleMultiPropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager) override;
+    virtual void UpdateProperties(wxPropertyGrid* propertyGrid, Controller* c, ModelManager* modelManager, std::list<wxPGProperty*>& expandProperties) override;
+    virtual void AddProperties(wxPropertyGrid* propertyGrid, wxPGProperty *before, Controller* c, bool allSameSize, std::list<wxPGProperty*>& expandProperties) override;
+    virtual bool HandlePropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager, Controller* c) override;
+    virtual void RemoveProperties(wxPropertyGrid* propertyGrid) override;
 #endif
-#pragma endregion]
+#pragma endregion
 
     virtual wxXmlNode* Save() override;
 };

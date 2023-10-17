@@ -53,8 +53,12 @@ public:
 #pragma region Constructors and Destructors
     ControllerSerial(OutputManager* om, wxXmlNode* node, const std::string& showDir);
     ControllerSerial(OutputManager* om);
-    virtual ~ControllerSerial() {}
+    ControllerSerial(OutputManager* om, const ControllerSerial& from);
+    virtual ~ControllerSerial()
+    {}
     virtual wxXmlNode* Save() override;
+    virtual bool UpdateFrom(Controller* from) override;
+    virtual Controller* Copy(OutputManager* om) override;
 #pragma endregion
 
 #pragma region Getters and Setters
@@ -82,7 +86,7 @@ public:
 #pragma region Virtual Functions
     virtual void SetId(int id) override;
 
-    virtual void VMVChanged() override;
+    virtual void VMVChanged(wxPropertyGrid *grid = nullptr) override;
 
     virtual bool IsManaged() const override { return false; }
 

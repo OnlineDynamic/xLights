@@ -107,10 +107,12 @@ class FPPConnectDialog: public wxDialog
         void SetChoiceValueIndex(const std::string &col, int i);
         void SetCheckValue(const std::string &col, bool b);
 
-		void DisplayDateModified(std::string const& filePath, wxTreeListItem &index) const;
+		void DisplayDateModified(const wxString& filePath, wxTreeListItem &index) const;
 
 		void UpdateSeqCount();
         void OnSequenceListToggled(wxDataViewEvent& event);
+    
+        void doUpload(FPPUploadProgressDialog *prgs, std::vector<bool> doUpload);
 
 		DECLARE_EVENT_TABLE()
 };

@@ -42,6 +42,7 @@
 #include "ExternalHooks.h"
 
 #include "xLightsVersion.h"
+#include "TopEffectsPanel.h"
 
 #include <log4cpp/Category.hh>
 
@@ -908,8 +909,9 @@ void xLightsFrame::UpdateModelsList()
     static log4cpp::Category& logger_work = log4cpp::Category::getInstance(std::string("log_work"));
     logger_work.debug("        UpdateModelsList.");
 
-    if (ModelsNode == nullptr) return; // this happens when xlights is first loaded
-    if (ViewObjectsNode == nullptr) return; // this happens when xlights is first loaded
+    if (ModelsNode == nullptr 
+        || ViewObjectsNode == nullptr
+        || modelPreview == nullptr) return; // this happens when xlights is first loaded
 
     //abort any render as it will crash if the model changes
     AbortRender();
@@ -1142,7 +1144,12 @@ void xLightsFrame::OpenAndCheckSequence(const wxArrayString& origFilenames, bool
     CallAfter(&xLightsFrame::OpenAndCheckSequence, fileNames, exitOnDone);
 }
 
-void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames, bool exitOnDone) {
+void xLightsFrame::OpenRenderAndSaveSequencesF(const wxArrayString& origFileNames, int flags)
+{
+    OpenRenderAndSaveSequences(origFileNames, flags & RENDER_EXIT_ON_DONE, flags & RENDER_ALREADY_RETRIED);
+}
+
+void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames, bool exitOnDone, bool alreadyRetried) {
     static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
 
     if (origFilenames.IsEmpty()) {
@@ -1177,7 +1184,6 @@ void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames
 
     wxArrayString fileNames = origFilenames;
     wxString seq = fileNames[0];
-    fileNames.RemoveAt(0);
     wxStopWatch sw; // start a stopwatch timer
 
     printf("Processing file %s\n", (const char *)seq.c_str());
@@ -1204,7 +1210,7 @@ void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames
     RenderIseqData(true, nullptr); // render ISEQ layers below the Nutcracker layer
     logger_base.info("   iseq below effects done.");
     ProgressBar->SetValue(10);
-    RenderGridToSeqData([this, sw, fileNames, exitOnDone] {
+    RenderGridToSeqData([this, sw, fileNames, exitOnDone, alreadyRetried] (bool aborted) {
         static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base.info("   Effects done.");
         ProgressBar->SetValue(90);
@@ -1216,19 +1222,26 @@ void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames
         _appProgress->Reset();
         GaugeSizer->Layout();
 
-        logger_base.info("Saving fseq file.");
-        SetStatusText(_("Saving ") + xlightsFilename + _(" ... Writing fseq."));
-        WriteFalconPiFile(xlightsFilename);
-        logger_base.info("fseq file done.");
-        DisplayXlightsFilename(xlightsFilename);
-        float elapsedTime = sw.Time()/1000.0; // now stop stopwatch timer and get elapsed time. change into seconds from ms
-        wxString displayBuff = wxString::Format(_("%s     Updated in %7.3f seconds"),xlightsFilename,elapsedTime);
-        logger_base.info("%s", (const char *) displayBuff.c_str());
-        CallAfter(&xLightsFrame::SetStatusText, displayBuff, 0);
-        mSavedChangeCount = _sequenceElements.GetChangeCount();
-        mLastAutosaveCount = mSavedChangeCount;
+        if (!aborted || alreadyRetried) {
+            logger_base.info("Saving fseq file.");
+            SetStatusText(_("Saving ") + xlightsFilename + _(" ... Writing fseq."));
+            WriteFalconPiFile(xlightsFilename);
+            logger_base.info("fseq file done.");
+            DisplayXlightsFilename(xlightsFilename);
+            float elapsedTime = sw.Time() / 1000.0; // now stop stopwatch timer and get elapsed time. change into seconds from ms
+            wxString displayBuff = wxString::Format(_("%s     Updated in %7.3f seconds"), xlightsFilename, elapsedTime);
+            logger_base.info("%s", (const char*)displayBuff.c_str());
+            CallAfter(&xLightsFrame::SetStatusText, displayBuff, 0);
+            mSavedChangeCount = _sequenceElements.GetChangeCount();
+            mLastAutosaveCount = mSavedChangeCount;
 
-        CallAfter(&xLightsFrame::OpenRenderAndSaveSequences, fileNames, exitOnDone);
+            auto nFileNames = fileNames;
+            nFileNames.RemoveAt(0);
+            CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, nFileNames, (exitOnDone ? RENDER_EXIT_ON_DONE : 0));
+        } else {
+            logger_base.info("Render was aborted, retrying.");
+            CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, fileNames, (exitOnDone ? RENDER_EXIT_ON_DONE : 0) | RENDER_ALREADY_RETRIED);
+        }
     } );
 }
 
@@ -1352,7 +1365,7 @@ void xLightsFrame::SaveSequence()
         RenderIseqData(true, nullptr); // render ISEQ layers below the Nutcracker layer
         logger_base.info("   iseq below effects done.");
         ProgressBar->SetValue(10);
-        RenderGridToSeqData([this, sw] {
+        RenderGridToSeqData([this, sw] (bool aborted) {
             static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
             logger_base.info("   Effects done.");
             ProgressBar->SetValue(90);
@@ -1483,7 +1496,7 @@ void xLightsFrame::RenderAll()
     RenderIseqData(true, nullptr); // render ISEQ layers below the Nutcracker layer
     logger_base.info("   iseq below effects done.");
     ProgressBar->SetValue(10);
-    RenderGridToSeqData([this, sw] {
+    RenderGridToSeqData([this, sw] (bool aborted) {
         static log4cpp::Category& logger_base2 = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base2.info("   Effects done.");
         ProgressBar->SetValue(90);
@@ -1553,6 +1566,10 @@ void xLightsFrame::EnableSequenceControls(bool enable)
     mainSequencer->CheckBox_SuspendRender->Enable(enableSeq);
     enableAllToolbarControls(ViewToolBar, enable);
     PlayToolBar->EnableTool(ID_CHECKBOX_LIGHT_OUTPUT, enable);
+
+    effectsPnl->ButtonUpdateEffect->Enable(enableSeq);
+    effectsPnl->BitmapButtonRandomize->Enable(enableSeq);
+    effectsPnl->BitmapButtonSelectedEffect->Enable(enableSeq);
 
     enableAllChildControls(EffectsPanel1, enableSeqNotAC);
     if (enableSeqNotAC) EffectsPanel1->ValidateWindow();

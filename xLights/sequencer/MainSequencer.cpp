@@ -533,6 +533,9 @@ bool MainSequencer::HandleSequencerKeyBinding(wxKeyEvent& event)
             else if (type == "ZOOM_OUT") {
                 PanelTimeLine->ZoomOut();
             }
+            else if (type == "ZOOM_SEL") {
+                PanelTimeLine->ZoomSelection();
+            }
             else if (type == "RANDOM") {
                 Effect* ef = PanelEffectGrid->Paste("Random\t\t\n", xlights_version_string);
                 SelectEffect(ef);
@@ -718,7 +721,41 @@ bool MainSequencer::HandleSequencerKeyBinding(wxKeyEvent& event)
                 wxCommandEvent eventEffectUpdated(EVT_EFFECT_PALETTE_UPDATED);
                 wxPostEvent(GetParent(), eventEffectUpdated);
             }
-            else             {
+            else if (type == "MODEL_TOGGLE") {
+                
+                PanelEffectGrid->EnDisableSelectedModelWithRefresh();
+            
+            } else if (type == "MODEL_DISABLE") {
+                
+                PanelEffectGrid->EnDisableSelectedModelWithRefresh(1);
+
+            }
+            else if (type == "MODEL_ENABLE") {
+                
+                PanelEffectGrid->EnDisableSelectedModelWithRefresh(0);
+
+            } 
+            else if (type == "EFFECT_TOGGLE") {
+
+                PanelEffectGrid->EnDisableRenderEffectsWithRefresh();                
+
+            } 
+            else if (type == "EFFECT_DISABLE") {
+
+                PanelEffectGrid->EnDisableRenderEffectsWithRefresh(1);
+
+            } 
+            else if (type == "EFFECT_ENABLE") {
+
+                PanelEffectGrid->EnDisableRenderEffectsWithRefresh(0);
+
+            } 
+            else if (type == "MODEL_EFFECT_TOGGLE") {
+
+                PanelEffectGrid->EnDisableSelectedModelOrEffectsWithRefresh();
+
+            }
+            else {
                 logger_base.warn("Keybinding '%s' not recognised.", (const char*)type.c_str());
                 wxASSERT(false);
                 return false;

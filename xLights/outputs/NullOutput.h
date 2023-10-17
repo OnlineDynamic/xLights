@@ -20,8 +20,13 @@ public:
     #pragma region Constructors and Destructors
     NullOutput(wxXmlNode* node);
     NullOutput() : Output() { _channels = 512; SetUniverse(64001); }
+    NullOutput(const NullOutput& from);
     virtual ~NullOutput() override {};
     virtual wxXmlNode* Save() override;
+    virtual Output* Copy() override
+    {
+        return new NullOutput(*this);
+    }
     #pragma endregion 
 
     #pragma region Getters and Setters
@@ -57,12 +62,5 @@ public:
     virtual void SetOneChannel(int32_t channel, unsigned char data) override {}
     virtual void SetManyChannels(int32_t channel, unsigned char* data, size_t size) override {};
     virtual void AllOff() override {}
-    #pragma endregion 
-
-    #pragma region UI
-    #ifndef EXCLUDENETWORKUI
-    virtual void AddProperties(wxPropertyGrid* propertyGrid, bool allSameSize, std::list<wxPGProperty*>& expandProperties) override;
-    virtual bool HandlePropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager) override;
-    #endif
     #pragma endregion 
 };

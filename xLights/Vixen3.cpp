@@ -226,10 +226,10 @@ std::string VixenEffect::GetSettings() const
         } else if (nc == "Butterfly") {
             res += ",E_Butterfly_Chunks=" + settings.at("Butterfly_BkgrdChunks") +
                    ",E_Butterfly_Skip=" + settings.at("Butterfly_BkgrdSkip") +
-                   ",E_SLIDER_Butterfly_Speed=" + wxString::Format("%d", speed * 5); // max 100
+                   ",E_SLIDER_Butterfly_Speed=" + wxString::Format("%d", speed * 5) + // max 100
                    ",E_SLIDER_Butterfly_Style=" + settings.at("Butterfly_Style") +
                    ",E_CHOICE_Butterfly_Direction=" + settings.at("Butterfly_Direction") +
-                   ",E_CHOICE_Butterfly_Colors=" + (settings.at("Butterfly_Colors") == "0" ? "Rainbow" : "Palette");
+                   ",E_CHOICE_Butterfly_Colors=" + (settings.at("Butterfly_Colors") == "0" ? std::string("Rainbow") : std::string("Palette"));
         } else if (nc == "ColorWash") {
             res += ",E_TEXTCTRL_ColorWash_Cycles=" + settings.at("ColorWash_Count") +
                    ",E_CHECKBOX_ColorWash_HFade=" + BoolToIntStr(settings.at("ColorWash_FadeHorizontal")) +
@@ -1051,15 +1051,15 @@ std::vector<VixenColor> Vixen3::ProcessColorData(wxXmlNode* n)
     return (vColor);
 }
 
-std::list<std::string> Vixen3::GetModelsWithEffects() const
+std::list<std::pair<std::string, int>> Vixen3::GetModelsWithEffects() const
 {
-    std::list<std::string> res;
+    std::list<std::pair<std::string, int>> res;
 
     for (auto it: _effectData)
     {
         if (it.second.size() > 0)
         {
-            res.push_back(it.first);
+            res.emplace_back(it.first, it.second.size());
         }
     }
 

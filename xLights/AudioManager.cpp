@@ -253,19 +253,17 @@ void AudioData::RestorePos()
         SDL_AudioSpec actual_spec;
         const char* d = nullptr;
         if (_device != "") {
-            logger_base.debug("Opening audio device. %s", (const char*)_device.c_str());
             d = _device.c_str();
         }
+        logger_base.debug("Opening audio device. %s", (const char*)d);
         SDL_ClearError();
         SDL_AudioDeviceID rc = SDL_OpenAudioDevice(d, input ? 1 : 0, &_wanted_spec, &actual_spec, 0);
         if (_device == "") {
             d = "<Default>";
         }
-        wxASSERT(strlen(SDL_GetError()) == 0);
-        if (strlen(SDL_GetError()) != 0) {
-            logger_base.debug("    Result '%s'", SDL_GetError());
-        }
+        logger_base.debug("    Result '%s'", SDL_GetError());
         if (rc < 2) {
+            _dev = 0;
             return false;
         }
         _dev = rc;
@@ -832,7 +830,11 @@ void AudioData::RestorePos()
     {
         static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base.debug("SDL Audio Play on device %d.", _dev);
-
+        if (_dev == 0) {
+            if (!OpenDevice()) {
+                return;
+            }
+        }
         SDL_ClearError();
         SDL_AudioStatus as = SDL_GetAudioDeviceStatus(_dev);
         wxASSERT(strlen(SDL_GetError()) == 0);
@@ -842,7 +844,6 @@ void AudioData::RestorePos()
         }
 
         wxASSERT(SDL_GetAudioDeviceStatus(_dev) == SDL_AUDIO_PLAYING);
-
         _state = SDLSTATE::SDLPLAYING;
     }
 
@@ -850,36 +851,45 @@ void AudioData::RestorePos()
     {
         static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base.debug("SDL Audio Stop on device %d.", _dev);
-        SDL_ClearError();
-        _state = SDLSTATE::SDLNOTPLAYING;
-        SDL_AudioStatus as = SDL_GetAudioDeviceStatus(_dev);
-        wxASSERT(strlen(SDL_GetError()) == 0);
-        if (as == SDL_AUDIO_PLAYING) {
-            SDL_PauseAudioDevice(_dev, 1);
+        if (_dev > 0) {
+            SDL_ClearError();
+            _state = SDLSTATE::SDLNOTPLAYING;
+            SDL_AudioStatus as = SDL_GetAudioDeviceStatus(_dev);
+            wxASSERT(strlen(SDL_GetError()) == 0);
+            if (as == SDL_AUDIO_PLAYING) {
+                SDL_PauseAudioDevice(_dev, 1);
+                wxASSERT(strlen(SDL_GetError()) == 0);
+            }
+            SDL_ClearQueuedAudio(_dev);
             wxASSERT(strlen(SDL_GetError()) == 0);
         }
-        SDL_ClearQueuedAudio(_dev);
-        wxASSERT(strlen(SDL_GetError()) == 0);
     }
 
     void OutputSDL::Pause()
     {
         static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base.debug("SDL Audio Pause on device %d.", _dev);
-        SDL_ClearError();
-        SDL_AudioStatus as = SDL_GetAudioDeviceStatus(_dev);
-        wxASSERT(strlen(SDL_GetError()) == 0);
-        if (as == SDL_AUDIO_PLAYING) {
-            SDL_PauseAudioDevice(_dev, 1);
+        if (_dev > 0) {
+            SDL_ClearError();
+            SDL_AudioStatus as = SDL_GetAudioDeviceStatus(_dev);
             wxASSERT(strlen(SDL_GetError()) == 0);
+            if (as == SDL_AUDIO_PLAYING) {
+                SDL_PauseAudioDevice(_dev, 1);
+                wxASSERT(strlen(SDL_GetError()) == 0);
+            }
+            _state = SDLSTATE::SDLNOTPLAYING;
         }
-        _state = SDLSTATE::SDLNOTPLAYING;
     }
 
     void OutputSDL::Unpause()
     {
         static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base.debug("SDL Audio Unpause on device %d.", _dev);
+        if (_dev == 0) {
+            if (!OpenDevice()) {
+                return;
+            }
+        }
         SDL_ClearError();
         SDL_AudioStatus as = SDL_GetAudioDeviceStatus(_dev);
         wxASSERT(strlen(SDL_GetError()) == 0);
@@ -1512,9 +1522,10 @@ void AudioManager::DoPolyphonicTranscription(wxProgressDialog* dlg, AudioManager
             logger_base.warn("DoPolyphonicTranscription: Polyphonic Transcription threw an error getting the remaining features.");
         }
 
-        //done with VAMP Polyphonic Transcriber
-        delete pt;
+        // done with VAMP Polyphonic Transcriber ... but dont delete it as the VAMP code manages its lifetime
+        // delete pt;
     }
+
     _polyphonicTranscriptionDone = true;
     logger_base.info("DoPolyphonicTranscription: Polyphonic transcription completed in %ld.", sw.Time());
 }
@@ -3141,7 +3152,13 @@ xLightsVamp::xLightsVamp()
 	_loader = Vamp::HostExt::PluginLoader::getInstance();
 }
 
-xLightsVamp::~xLightsVamp() {}
+xLightsVamp::~xLightsVamp()
+{
+    while (_loadedPlugins.size() > 0) {
+        delete _loadedPlugins.back();
+        _loadedPlugins.pop_back();
+    }
+}
 
 std::string AudioManager::Hash()
 {

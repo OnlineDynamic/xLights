@@ -28,10 +28,11 @@
 #include "VAMPPluginDialog.h"
 #include "UtilFunctions.h"
 #include "graphics/opengl/xlGLCanvas.h"
+#include "../MetronomeLabelDialog.h"
 
 #include <log4cpp/Category.hh>
 
-#define ICON_SPACE ScaleWithSystemDPI(25)
+#define ICON_SPACE FromDIP(25)
 
 BEGIN_EVENT_TABLE(RowHeading, wxWindow)
 EVT_LEFT_DOWN(RowHeading::mouseLeftDown)
@@ -730,6 +731,24 @@ void RowHeading::OnLayerPopup(wxCommandEvent& event)
                                 timing_added = true;
                             }
                         }
+                    }else if (selected_timing == "Metronome w/ Tags") {
+                        int base_timing = xml_file->GetFrameMS();
+                        MetronomeLabelDialog dlg(base_timing, this);
+                        if (dlg.ShowModal() == wxID_OK)
+                        {
+                            int ms = (dlg.GetTiming() + base_timing / 2) / base_timing * base_timing;
+
+                            if (ms != dlg.GetTiming())
+                            {
+                               DisplayWarning(wxString::Format("Timing adjusted to match sequence timing %dms -> %dms", dlg.GetTiming(), ms).ToStdString());
+                            }
+                            wxString ttn = wxString::Format("%dms Metronome %d Tag", ms, dlg.GetTagCount());
+                            if (!xml_file->TimingAlreadyExists(ttn.ToStdString(), mSequenceElements->GetXLightsFrame()))
+                            {
+                                xml_file->AddMetronomeLabelTimingSection(ttn.ToStdString(), ms, dlg.GetTagCount(), mSequenceElements->GetXLightsFrame());
+                                timing_added = true;
+                            }
+                        }
                     } else {
                         xml_file->AddFixedTimingSection(selected_timing, mSequenceElements->GetXLightsFrame());
                         timing_added = true;
@@ -873,8 +892,12 @@ void RowHeading::OnLayerPopup(wxCommandEvent& event)
         }
     } else if (id == ID_ROW_MNU_HIDEALLTIMING) {
         mSequenceElements->HideAllTimingTracks(true);
+        wxCommandEvent eventRowHeaderChanged(EVT_ROW_HEADINGS_CHANGED);
+        wxPostEvent(GetParent(), eventRowHeaderChanged);
     } else if (id == ID_ROW_MNU_SHOWALLTIMING) {
         mSequenceElements->HideAllTimingTracks(false);
+        wxCommandEvent eventRowHeaderChanged(EVT_ROW_HEADINGS_CHANGED);
+        wxPostEvent(GetParent(), eventRowHeaderChanged);
     } else if (id == ID_ROW_MNU_REMOVE_TIMING_WORDS_PHONEMES) {
         auto te = dynamic_cast<TimingElement*>(element);
         if (te != nullptr) {
@@ -1264,7 +1287,8 @@ bool RowHeading::ExpandElementIfEffects(Element* e)
 bool RowHeading::ModelInView(const std::string& model, int view) const
 {
     for (size_t j = 0; j < mSequenceElements->GetElementCount(view); ++j) {
-        if (model == mSequenceElements->GetElement(j, view)->GetName()) {
+        auto m = mSequenceElements->GetElement(j, view);
+        if (model == m->GetName() && m->GetVisible()) {
             return true;
         }
     }
@@ -1388,7 +1412,7 @@ static float ComputeRHFontSize() {
     }
     return fontSize;
 }
-#ifdef __WXOSX__
+#ifndef __WXMSW__
 static void SetFontPixelSize(wxFont &font, float f) {
     float i = font.GetPixelSize().y;
     float p = font.GetFractionalPointSize();
@@ -1415,7 +1439,7 @@ void RowHeading::render( wxPaintEvent& event )
     dc.GetSize(&w,&h);
     xlColor rowHeaderCol = ColorManager::instance()->GetColor(ColorManager::COLOR_ROW_HEADER);
     xlColor outlineCol(32, 32, 32);
-    bool isDark = wxSystemSettings::GetAppearance().IsDark();
+    bool isDark = IsDarkMode();
     if (isDark) {
         outlineCol.Set(55, 55, 55);
     }
@@ -1442,6 +1466,15 @@ void RowHeading::render( wxPaintEvent& event )
 
     xlColor labelColor = ColorManager::instance()->GetColor(ColorManager::COLOR_ROW_HEADER_TEXT);
     wxColor labelWxColor = labelColor.asWxColor();
+    
+    int effectNoticeWidth = FromDIP(4);
+    wxColor  effectNoticeColor(*wxYELLOW);
+    if (IsDarkMode()) {
+        // drop to a mustard yellow so not so jarring on the eyes
+        effectNoticeColor = wxColour(0xEA, 0xAA, 0x00);
+    }
+    wxPen effectNoticePen(effectNoticeColor);
+    wxBrush effectNoticeBrush(effectNoticeColor);
     
     for (int i = 0; i < mSequenceElements->GetVisibleRowInformationSize(); i++) {
         Row_Information_Struct* rowInfo = mSequenceElements->GetVisibleRowInformation(i);
@@ -1597,10 +1630,36 @@ void RowHeading::render( wxPaintEvent& event )
                         }
                         dc.SetPen(*wxBLACK_PEN);
                         dc.SetBrush(wxBrush(color.asWxColor()));
-                        dc.DrawRectangle(getWidth() - ScaleWithSystemDPI(21), startY + 5, ScaleWithSystemDPI(12), ScaleWithSystemDPI(12));
+                        dc.DrawRectangle(getWidth() - FromDIP(21), startY + 5, FromDIP(12), FromDIP(12));
                         dc.SetPen(penOutline);
                         dc.SetBrush(brush2);
                     }
+                }
+
+                bool hasEffects = rowInfo->element->HasEffects();
+                if (!hasEffects && m->GetDisplayAs() == "ModelGroup")
+                {
+                    // model groups are only marked if model group has direct effects or the model with effects is otherwise hidden in the view
+                    hasEffects = rowInfo->element->HasEffects();
+
+                    int view = mSequenceElements->GetCurrentView();
+                    ModelGroup* mg = dynamic_cast<ModelGroup*>(m);
+                    auto models = mg->ModelNames();
+                    for (auto it = models.begin(); !hasEffects && it != models.end(); ++it) {
+                        ModelElement* mm = dynamic_cast<ModelElement*>(mSequenceElements->GetElement(*it));
+
+                        if (mm != nullptr && !ModelInView(*it, view)) {
+                            hasEffects = mm->HasEffects();
+                        }
+                    }
+                }
+
+                if (hasEffects) {
+                    dc.SetPen(effectNoticePen);
+                    dc.SetBrush(effectNoticeBrush);
+                    dc.DrawRectangle(getWidth() - effectNoticeWidth, startY, effectNoticeWidth, getHeight());
+                    dc.SetPen(penOutline);
+                    dc.SetBrush(brush2);
                 }
             }
         } else if (rowInfo->element->GetType()== ElementType::ELEMENT_TYPE_TIMING) {

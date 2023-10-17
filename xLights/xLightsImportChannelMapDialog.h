@@ -26,6 +26,7 @@
 #include <wx/spinctrl.h>
 #include <wx/splitter.h>
 #include <wx/stattext.h>
+#include <wx/textctrl.h>
 //*)
 
 #include <map>
@@ -67,7 +68,7 @@ class xLightsImportModelNode : wxDataViewTreeStoreNode
 public:
     xLightsImportModelNode(xLightsImportModelNode* parent,
         const wxString &model, const wxString &strand, const wxString &node,
-        const wxString &mapping, const bool mappingExists, const wxColor& color = *wxWHITE) : 
+        const wxString &mapping, const bool mappingExists, const wxColor& color = *wxWHITE) :
         wxDataViewTreeStoreNode(parent, "XXX"),
         m_parent(parent),
         _model(model),
@@ -114,7 +115,7 @@ public:
     {
         // free all our children nodes
         size_t count = m_children.GetCount();
-        for (size_t i = 0; i < count; i++) {
+        for (size_t i = 0; i < count; ++i) {
             xLightsImportModelNode *child = m_children[i];
             delete child;
         }
@@ -126,7 +127,7 @@ public:
         _mapping = "";
         _color = *wxWHITE;
         size_t count = m_children.GetCount();
-        for (size_t i = 0; i < count; i++) {
+        for (size_t i = 0; i < count; ++i) {
             GetNthChild(i)->ClearMapping();
         }
     }
@@ -138,7 +139,7 @@ public:
         if (!_mapping.empty()) {
             return true;
         } else {
-            for (size_t i = 0; i < m_children.size(); i++) {
+            for (size_t i = 0; i < m_children.size(); ++i) {
                 xLightsImportModelNode* c = GetNthChild(i);
                 if (c->HasMapping()) {
                     return true;
@@ -211,7 +212,7 @@ public:
     {
         // free all our children nodes
         size_t count = m_children.GetCount();
-        for (size_t i = 0; i < count; i++) {
+        for (size_t i = 0; i < count; ++i) {
             xLightsImportModelNode *child = m_children[i];
             delete child;
         }
@@ -246,7 +247,7 @@ public:
     unsigned int GetMappedChildCount() const
     {
         size_t count = 0;
-        for (size_t i = 0; i < m_children.size(); i++) {
+        for (size_t i = 0; i < m_children.size(); ++i) {
             xLightsImportModelNode* c = GetNthChild(i);
             if (c->HasMapping()) {
                 count++;
@@ -314,12 +315,17 @@ struct ImportChannel
 {
     std::string name;
     std::string type;
-    ImportChannel(std::string name_, std::string type_):
-        name(std::move(name_)), type(std::move(type_))
-    { }
-    ImportChannel(std::string name_) :
-        name(std::move(name_))
-    { }
+    int effectCount{0};
+    //ImportChannel(std::string name_, std::string type_):
+    //    name(std::move(name_)), type(std::move(type_))
+    //{ }
+    //ImportChannel(std::string name_) :
+    //    name(std::move(name_))
+    //{ }
+
+    ImportChannel(std::string name_, int count) :
+        name(std::move(name_)), effectCount(count)
+    {}
 
     inline bool operator==(const ImportChannel& rhs)
     {
@@ -369,12 +375,13 @@ class xLightsImportChannelMapDialog: public wxDialog
         wxDataViewItem GetPriorTreeItem(const wxDataViewItem item) const;
         bool InitImport(std::string checkboxText = "");
         void SetModelBlending(bool enabled);
-        bool GetImportModelBlending();
+        [[nodiscard]] bool GetImportModelBlending() const;
+        [[nodiscard]] bool IsLockEffects() const;
         void SetXsqPkg(SequencePackage* xsqPkg);
         [[nodiscard]] std::vector<std::string> const GetChannelNames() const;
         [[nodiscard]] ImportChannel* GetImportChannel(std::string const& name) const;
         void SortChannels();
-        void AddChannel(std::string const& name);
+        void AddChannel(std::string const& name, int effectCount = 0);
         void LoadMappingFile(wxString const& filepath, bool hideWarnings = false);
 
         xLightsImportTreeModel *_dataModel;
@@ -387,6 +394,7 @@ class xLightsImportChannelMapDialog: public wxDialog
 		wxCheckBox* CheckBoxImportMedia;
 		wxCheckBox* CheckBox_EraseExistingEffects;
 		wxCheckBox* CheckBox_Import_Blend_Mode;
+		wxCheckBox* CheckBox_LockEffects;
 		wxCheckBox* CheckBox_MapCCRStrand;
 		wxCheckListBox* TimingTrackListBox;
 		wxFlexGridSizer* FlexGridSizer11;
@@ -404,8 +412,12 @@ class xLightsImportChannelMapDialog: public wxDialog
 		wxSpinCtrl* TimeAdjustSpinCtrl;
 		wxSplitterWindow* SplitterWindow1;
 		wxStaticBoxSizer* TimingTrackPanel;
+		wxStaticText* StaticText1;
+		wxStaticText* StaticText2;
 		wxStaticText* StaticText_Blend_Type;
 		wxStaticText* StaticText_TimeAdjust;
+		wxTextCtrl* TextCtrl_FindFrom;
+		wxTextCtrl* TextCtrl_FindTo;
 		//*)
 
         SequenceElements *mSequenceElements;
@@ -424,17 +436,22 @@ protected:
 		static const long ID_SPINCTRL1;
 		static const long ID_CHECKBOX1;
 		static const long ID_CHECKBOX11;
+		static const long ID_CHECKBOX4;
 		static const long ID_CHECKBOX2;
 		static const long ID_STATICTEXT_BLEND_TYPE;
 		static const long ID_CHECKBOX3;
 		static const long ID_BUTTON_IMPORT_OPTIONS;
 		static const long ID_CHECKLISTBOX1;
+		static const long ID_STATICTEXT2;
+		static const long ID_TEXTCTRL2;
 		static const long ID_BUTTON3;
 		static const long ID_BUTTON4;
 		static const long ID_BUTTON5;
 		static const long ID_BUTTON1;
 		static const long ID_BUTTON2;
 		static const long ID_PANEL1;
+		static const long ID_STATICTEXT1;
+		static const long ID_TEXTCTRL1;
 		static const long ID_LISTCTRL1;
 		static const long ID_PANEL2;
 		static const long ID_SPLITTERWINDOW1;
@@ -461,6 +478,8 @@ protected:
 		void OnListCtrl_AvailableItemActivated(wxListEvent& event);
 		void OnButtonImportOptionsClick(wxCommandEvent& event);
 		void OnCheckBoxImportMediaClick(wxCommandEvent& event);
+		void OnTextCtrl_FindFromText(wxCommandEvent& event);
+		void OnTextCtrl_FindToText(wxCommandEvent& event);
 		//*)
 
         void RightClickTimingTracks(wxContextMenuEvent& event);
@@ -486,20 +505,20 @@ protected:
         void generateMapHintsFile(wxString const& filename);
 
         static wxString AggressiveAutomap(const wxString& name);
-        std::function<bool(const std::string&, const std::string&, const std::string&, const std::string&)> aggressive = 
-            [](const std::string& s, const std::string& c, const std::string& extra1, const std::string& extra2) 
+        std::function<bool(const std::string&, const std::string&, const std::string&, const std::string&)> aggressive =
+            [](const std::string& s, const std::string& c, const std::string& extra1, const std::string& extra2)
         {
             return AggressiveAutomap(wxString(s).Trim(true).Trim(false).Lower()) == c;
         };
 
         std::function<bool(const std::string&, const std::string&, const std::string&, const std::string&)> norm =
-            [](const std::string& s, const std::string& c, const std::string& extra1, const std::string& extra2) 
-        { 
-            return wxString(s).Trim(true).Trim(false).Lower() == c; 
+            [](const std::string& s, const std::string& c, const std::string& extra1, const std::string& extra2)
+        {
+            return wxString(s).Trim(true).Trim(false).Lower() == c;
         };
 
         std::function<bool(const std::string&, const std::string&, const std::string&, const std::string&)> regex =
-            [](const std::string& s, const std::string& c, const std::string& pattern, const std::string& replacement) 
+            [](const std::string& s, const std::string& c, const std::string& pattern, const std::string& replacement)
         {
             static wxRegEx r;
             static std::string lastRegex;

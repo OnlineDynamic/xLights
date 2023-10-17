@@ -14,9 +14,7 @@
 #include <wx/panel.h>
 class wxCheckBox;
 class wxChoice;
-class wxFlexGridSizer;
 class wxGridBagSizer;
-class wxStaticBoxSizer;
 class wxStaticText;
 //*)
 
@@ -29,12 +27,12 @@ class ViewSettingsPanel: public wxPanel
 		virtual ~ViewSettingsPanel();
 
 		//(*Declarations(ViewSettingsPanel)
+		wxCheckBox* CheckBox_BaseShowFolder;
 		wxCheckBox* HousePreviewCheckBox;
 		wxCheckBox* PlayControlsCheckBox;
+		wxChoice* Choice_TimelineZooming;
 		wxChoice* EffectAssistChoice;
 		wxChoice* ModelHandleSizeChoice;
-		wxChoice* OpenGLRenderOrderChoice;
-		wxChoice* OpenGLVersionChoice;
 		wxChoice* ToolIconSizeChoice;
 		//*)
 
@@ -45,12 +43,12 @@ class ViewSettingsPanel: public wxPanel
 
 		//(*Identifiers(ViewSettingsPanel)
 		static const long ID_CHOICE3;
-		static const long ID_CHOICE1;
-		static const long ID_CHOICE2;
 		static const long ID_CHOICE4;
 		static const long ID_CHOICE5;
 		static const long ID_CHECKBOX1;
 		static const long ID_CHECKBOX2;
+		static const long ID_CHECKBOX3;
+		static const long ID_CHOICE_TIMELINEZOOMING;
 		//*)
 
 	private:
@@ -64,6 +62,8 @@ class ViewSettingsPanel: public wxPanel
 		void OnModelHandleSizeChoiceSelect(wxCommandEvent& event);
 		void OnOpenGLRenderOrderChoiceSelect(wxCommandEvent& event);
 		void OnOpenGLVersionChoiceSelect(wxCommandEvent& event);
+		void OnCheckBox_BaseShowFolderClick(wxCommandEvent& event);		
+		void OnChoice_TimelineZoomingSelect(wxCommandEvent& event);
 		//*)
 
 		DECLARE_EVENT_TABLE()

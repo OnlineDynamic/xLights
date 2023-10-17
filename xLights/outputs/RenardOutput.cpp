@@ -4,16 +4,17 @@
 #include <log4cpp/Category.hh>
 
 #pragma region Constructors and Destructors
-RenardOutput::RenardOutput(SerialOutput* output) : SerialOutput(output)
+RenardOutput::RenardOutput(wxXmlNode* node) : SerialOutput(node)
 {
     _datalen = 0;
     _data = std::vector<uint8_t>(RENARD_MAX_CHANNELS+9);
 }
 
-RenardOutput::RenardOutput(wxXmlNode* node) : SerialOutput(node)
+RenardOutput::RenardOutput(const RenardOutput& from) :
+    SerialOutput(from)
 {
     _datalen = 0;
-    _data = std::vector<uint8_t>(RENARD_MAX_CHANNELS+9);
+    _data = std::vector<uint8_t>(RENARD_MAX_CHANNELS + 9);
 }
 
 RenardOutput::RenardOutput() : SerialOutput()
@@ -28,13 +29,12 @@ bool RenardOutput::Open()
 {
     if (!_enabled) return true;
 
+    _serialConfig[2] = '2'; // use 2 stop bits so padding chars are not required
     _ok = SerialOutput::Open();
 
     _datalen = _channels + 2;
     _data[0] = 0x7E;               // start of message
     _data[1] = 0x80;               // start address
-    _serialConfig[2] = '2'; // use 2 stop bits so padding chars are not required
-
     return _ok;
 }
 #pragma endregion Start and Stop

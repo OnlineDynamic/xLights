@@ -90,8 +90,7 @@ public:
 class NextRenderer {
 public:
 
-    NextRenderer() : nextLock(), nextSignal() {
-        previousFrameDone = -1;
+    NextRenderer() : nextLock(), nextSignal(), previousFrameDone(-1) {
     }
 
     virtual ~NextRenderer() {}
@@ -104,8 +103,7 @@ public:
         return true;
     }
 
-    bool HasNext() const
-    {
+    bool HasNext() const {
         return !next.empty();
     }
 
@@ -116,33 +114,32 @@ public:
     }
 
     virtual void setPreviousFrameDone(int i) {
-        std::unique_lock<std::mutex> lock(nextLock);
         previousFrameDone = i;
         nextSignal.notify_all();
     }
 
     int waitForFrame(int frame) {
-        std::unique_lock<std::mutex> lock(nextLock);
-        while (frame > previousFrameDone) {
-            nextSignal.wait_for(lock, std::chrono::milliseconds(10));
+        if (frame > previousFrameDone) {
+            std::unique_lock<std::mutex> lock(nextLock);
+            while (frame > previousFrameDone) {
+                nextSignal.wait_for(lock, std::chrono::milliseconds(10));
+            }
         }
         return previousFrameDone;
     }
 
     bool checkIfDone(int frame, int timeout = 5) {
-        std::unique_lock<std::mutex> lock(nextLock);
         return previousFrameDone >= frame;
     }
 
-    int GetPreviousFrameDone() const
-    {
+    int GetPreviousFrameDone() const {
         return previousFrameDone;
     }
 
 protected:
     std::mutex nextLock;
     std::condition_variable nextSignal;
-    volatile long previousFrameDone;
+    std::atomic_int previousFrameDone;
 private:
     std::vector<NextRenderer *> next;
 };
@@ -150,8 +147,7 @@ private:
 class AggregatorRenderer: public NextRenderer {
 public:
 
-    AggregatorRenderer(int numFrames) : NextRenderer(), finalFrame(numFrames + 19) {
-        data = new int[numFrames + 20];
+    AggregatorRenderer(int numFrames) : NextRenderer(), finalFrame(numFrames + 19), data(numFrames + 20) {
         for (int x = 0; x < (numFrames + 20); ++x) {
             data[x] = 0;
         }
@@ -159,7 +155,6 @@ public:
     }
 
     virtual ~AggregatorRenderer() {
-        delete [] data;
     }
 
     void incNumAggregated() {
@@ -173,6 +168,7 @@ public:
 
     virtual void setPreviousFrameDone(int frame) {
         if (max <= 1) {
+            previousFrameDone = frame;
             FrameDone(frame);
             return;
         }
@@ -180,20 +176,15 @@ public:
         if (idx == END_OF_RENDER_FRAME) {
             idx = finalFrame;
         }
-        if (idx % 10 == 0 || idx == finalFrame) {
-            //only record every 10th frame and the final frame to
-            //avoid a lot of lock contention
-            std::unique_lock<std::mutex> lock(nextLock);
-            ++data[idx];
-            if (data[idx] == max) {
-                previousFrameDone = frame;
-                FrameDone(previousFrameDone);
-            }
+        int i = data[idx].fetch_add(1);
+        if (i == (max - 1)) {
+            previousFrameDone = frame;
+            FrameDone(previousFrameDone);
         }
     }
 
 private:
-    int *data;
+    std::vector<std::atomic_int> data;
     int max;
     const int finalFrame;
 };
@@ -559,6 +550,7 @@ public:
     bool ProcessFrame(int frame, Element *el, EffectLayerInfo &info, PixelBufferClass *buffer, int strand = -1, bool blend = false) {
         wxStopWatch sw;
         bool effectsToUpdate = false;
+        Effect* tempEffect = nullptr;
         int numLayers = el->GetEffectLayerCount();
 
         for (int x = 0; x < info.validLayers.size(); x++) {
@@ -571,8 +563,66 @@ public:
             //must lock the layer so the Effect* stays valid
             std::unique_lock<std::recursive_mutex> elayerLock(elayer->GetLock());
             Effect* ef = findEffectForFrame(elayer, frame, info.currentEffectIdxs[layer]);
-            if (ef != info.currentEffects[layer]) {
-                info.currentEffects[layer] = ef;
+            Effect* copy = nullptr;
+
+            if (ef != nullptr && ef->GetEffectIndex() == EffectManager::eff_DUPLICATE) {
+                // we are mirroring another model ... so find the right effect on that model/layer
+                Effect* orig = ef;
+                
+                ef = findEffectForFrame(orig->GetSetting("E_CHOICE_Duplicate_Model"), orig->GetSettings().GetInt("E_SPINCTRL_Duplicate_Layer"), frame);
+
+                if (ef != nullptr) {
+
+                    copy = ef;
+
+                    if (ef->GetEffectIndex() == EffectManager::eff_DUPLICATE) {
+                        // we cant duplicate a duplicate
+                        ef = nullptr;
+                    } else {
+                        tempEffect = new Effect(*ef);
+                        ef = tempEffect;
+
+                        if (orig->GetSetting("E_CHECKBOX_Duplicate_Override_Buffer") == "1") {
+                            ef->EraseSettingsStartingWith("B_");
+                            for (const auto& it : orig->GetSettings()) {
+                                if (StartsWith(it.first, "B_"))
+                                    ef->GetSettings()[it.first] = it.second;
+                            }
+                        }
+                        if (orig->GetSetting("E_CHECKBOX_Duplicate_Override_Timing") == "1") {
+                            ef->EraseSettingsStartingWith("T_");
+                            for (const auto& it : orig->GetSettings()) {
+                                if (StartsWith(it.first, "T_"))
+                                    ef->GetSettings()[it.first] = it.second;
+                            }
+                        }
+                        if (orig->GetSetting("E_CHECKBOX_Duplicate_Override_Palette") == "1") {
+                            ef->ErasePalette();
+                            for (const auto& it : orig->GetPaletteMap()) {
+                                if (StartsWith(it.first, "C_BUTTON_Palette") || StartsWith(it.first, "C_CHECKBOX_Palette"))
+                                    ef->GetPaletteMap()[it.first] = it.second;
+                            }
+                            ef->SetPalette(ef->GetPaletteAsString()); // this forces the colour parsing
+                        }
+                        if (orig->GetSetting("E_CHECKBOX_Duplicate_Override_Color") == "1") {
+                            ef->EraseColourSettings();
+                            for (const auto& it : orig->GetPaletteMap()) {
+                                if (!StartsWith(it.first, "C_BUTTON_Palette") && !StartsWith(it.first, "C_CHECKBOX_Palette"))
+                                    ef->GetPaletteMap()[it.first] = it.second;
+                            }
+                        }
+                    }
+                }
+            } 
+
+            Effect* compare = copy != nullptr ? copy : ef;
+
+            if (compare != info.currentEffects[layer]) {
+                if (copy != nullptr) {
+                    info.currentEffects[layer] = copy;
+                } else {
+                    info.currentEffects[layer] = ef;
+                }
                 SetInializingStatus(frame, layer, info.submodel, strand, -1);
                 initialize(layer, frame, ef, info.settingsMaps[layer], buffer);
                 info.effectStates[layer] = true;
@@ -603,6 +653,8 @@ public:
             if (!freeze) {
                 // Mix canvas pre-loads the buffer with data from underlying layers
                 if (buffer->IsCanvasMix(layer) && layer < numLayers - 1) {
+                    maybeWaitForFrame(frame);
+
                     auto vl = info.validLayers;
                     if (info.settingsMaps[layer].Get("LayersSelected", "") != "") {
                         // remove from valid layers any layers we dont need to include
@@ -627,7 +679,7 @@ public:
 
                     // I have to calc the output here to apply blend, rotozoom and transitions
                     buffer->CalcOutput(frame, vl, layer);
-                    std::vector<bool> done(rb.GetPixelCount());
+                    std::vector<uint8_t> done(rb.GetPixelCount());
                     rb.CopyNodeColorsToPixels(done);
                     // now fill in any spaces in the buffer that don't have nodes mapped to them
                     parallel_for(0, rb.BufferHt, [&rb, &buffer, &done, &vl, frame](int y) {
@@ -659,6 +711,7 @@ public:
         }
 
         if (effectsToUpdate) {
+            maybeWaitForFrame(frame);
             SetCalOutputStatus(frame, info.submodel, strand, -1);
             if (blend) {
                 buffer->SetColors(numLayers, &((*seqData)[frame][0]));
@@ -668,22 +721,32 @@ public:
             buffer->GetColors(&((*seqData)[frame][0]), rangeRestriction);
         }
 
-        if (sw.Time() > 500)
-        {
+        if (sw.Time() > 500) {
             RenderBuffer& b = buffer->BufferForLayer(0, -1);
             renderLog.info("*** Frame #%d at %dms render on model %s (%dx%d) took more than 1/2s => %dms.", frame, frame * b.frameTimeInMs, (const char *)el->GetName().c_str(), b.BufferWi, b.BufferHt, sw.Time());
         }
 
+        if (tempEffect != nullptr)
+            delete tempEffect;
+
         return effectsToUpdate;
     }
 
+    std::atomic_int maxFrameBeforeCheck = -1;
+    void maybeWaitForFrame(int frame) {
+        //make sure we can do this frame
+        if (frame >= maxFrameBeforeCheck) {
+            SetWaitingStatus(frame);
+            maxFrameBeforeCheck = waitForFrame(frame);
+            SetGenericStatus("%s: Processing frame %d ", frame, true, true);
+        }
+    }
     virtual void Process() override {
         static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
         static log4cpp::Category& logger_jobpool = log4cpp::Category::getInstance(std::string("log_jobpool"));
         logger_jobpool.debug("Render job thread id 0x%x or %d", wxThread::GetCurrentId(), wxThread::GetCurrentId());
 
         SetGenericStatus("Initializing rendering thread for %s", 0);
-        int maxFrameBeforeCheck = -1;
         int origChangeCount;
         int ss, es;
 
@@ -752,22 +815,14 @@ public:
                     rowToRender->SetDirtyRange(frame * seqData->FrameTime(), endFrame * seqData->FrameTime());
                     break;
                 }
-                //make sure we can do this frame
-                if (frame >= maxFrameBeforeCheck) {
-                    wxStopWatch sw;
-                    SetWaitingStatus(frame);
-                    maxFrameBeforeCheck = waitForFrame(frame);
-                    if (abort) {
-                        rowToRender->SetDirtyRange(frame * seqData->FrameTime(), endFrame * seqData->FrameTime());
-                        break;
-                    }
-                    if (sw.Time() > 500) {
-                        renderLog.info("Model %s rendering frame %d waited %dms waiting for other models to finish.", (const char *)(mainModelInfo.element != nullptr) ? mainModelInfo.element->GetName().c_str() : "", frame, sw.Time());
-                    }
-                    SetGenericStatus("%s: Processing frame %d ", frame, true, true);
+                if (abort) {
+                    rowToRender->SetDirtyRange(frame * seqData->FrameTime(), endFrame * seqData->FrameTime());
+                    break;
                 }
+
                 bool cleared = ProcessFrame(frame, rowToRender, mainModelInfo, mainBuffer, -1, supportsModelBlending);
                 if (!subModelInfos.empty()) {
+                    maybeWaitForFrame(frame);
                     for (const auto& a : subModelInfos) {
                         if (abort) {
                             rowToRender->SetDirtyRange(frame * seqData->FrameTime(), endFrame * seqData->FrameTime());
@@ -779,6 +834,7 @@ public:
                 }
 
                 if (!nodeBuffers.empty()) {
+                    maybeWaitForFrame(frame);
                     for (const auto& it : nodeBuffers) {
                         if (abort) {
                             rowToRender->SetDirtyRange(frame * seqData->FrameTime(), endFrame * seqData->FrameTime());
@@ -889,6 +945,24 @@ private:
             buffer->SetPalette(layer, newcolors, newcc);
             buffer->SetTimes(layer, el->GetStartTimeMS(), el->GetEndTimeMS());
         }
+    }
+
+    Effect* findEffectForFrame(const wxString& model, const int layer, int frame)
+    {
+        Effect* res = nullptr;
+
+        Element* e = rowToRender->GetSequenceElements()->GetElement(model);
+
+        if (e != nullptr) {
+            EffectLayer* el = e->GetEffectLayer(layer - 1);
+
+            if (el != nullptr) {
+                int discard = 0;
+                res = findEffectForFrame(el, frame, discard);
+            }
+        }
+
+        return res;
     }
 
     Effect *findEffectForFrame(EffectLayer* layer, int frame, int &lastIdx) {
@@ -1012,7 +1086,7 @@ void xLightsFrame::RenderEffectOnMainThread(RenderEvent *ev) {
 
 class RenderProgressInfo {
 public:
-    RenderProgressInfo(std::function<void()>&& cb) : callback(cb)
+    RenderProgressInfo(std::function<void(bool)>&& cb) : callback(cb)
     {
         numRows = 0;
         startFrame = 0;
@@ -1021,7 +1095,7 @@ public:
         aggregators = nullptr;
         renderProgressDialog = nullptr;
     };
-    std::function<void()> callback;
+    std::function<void(bool)> callback;
     int numRows;
     int startFrame;
     int endFrame;
@@ -1194,7 +1268,7 @@ void xLightsFrame::UpdateRenderStatus() {
             RenderDone();
             delete []rpi->jobs;
             delete []rpi->aggregators;
-            rpi->callback();
+            rpi->callback(abortedRenderJobs > 0);
             delete rpi;
             rpi = nullptr;
             it = renderProgressInfo.erase(it);
@@ -1350,7 +1424,9 @@ void xLightsFrame::Render(SequenceElements& seqElements,
                           const std::list<Model *> &restrictToModels,
                           int startFrame, int endFrame,
                           bool progressDialog, bool clear,
-                          std::function<void()>&& callback) {
+                          std::function<void(bool)>&& callback)
+{
+    abortedRenderJobs = 0;
 
     static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
     static log4cpp::Category &logger_render = log4cpp::Category::getInstance(std::string("log_render"));
@@ -1470,7 +1546,7 @@ void xLightsFrame::Render(SequenceElements& seqElements,
                 renderProgressDialog->scrolledWindowSizer->Add(label,1, wxALL |wxEXPAND,3);
                 wxGauge *g = new wxGauge(renderProgressDialog->scrolledWindow, wxID_ANY, 100);
                 g->SetValue(0);
-                g->SetMinSize(wxSize(100, -1));
+                g->SetMinSize(wxSize(200, -1));
                 renderProgressDialog->scrolledWindowSizer->Add(g, 1, wxALL |wxEXPAND,3);
                 jobs[row]->SetGauge(g);
             }
@@ -1489,7 +1565,7 @@ void xLightsFrame::Render(SequenceElements& seqElements,
 
     if (count) {
         if (progressDialog) {
-            renderProgressDialog->SetSize(250, 400);
+            renderProgressDialog->SetSize(450, 400);
             renderProgressDialog->scrolledWindow->SetSizer(renderProgressDialog->scrolledWindowSizer);
             renderProgressDialog->scrolledWindow->FitInside();
             renderProgressDialog->scrolledWindow->SetScrollRate(5, 5);
@@ -1507,7 +1583,7 @@ void xLightsFrame::Render(SequenceElements& seqElements,
         renderProgressInfo.push_back(pi);
         RenderStatusTimer.Start(100, false);
     } else {
-        callback();
+        callback(abortedRenderJobs > 0);
         if (progressDialog) {
             delete renderProgressDialog;
         }
@@ -1611,10 +1687,10 @@ void xLightsFrame::RenderDirtyModels() {
     if (endframe < startframe) {
         return;
     }
-    Render(_sequenceElements, _seqData, models, restricts, startframe, endframe, false, true, [] {});
+    Render(_sequenceElements, _seqData, models, restricts, startframe, endframe, false, true, [] (bool) {});
 }
 
-bool xLightsFrame::AbortRender(int maxTimeMS)
+bool xLightsFrame::AbortRender(int maxTimeMS, int* numThreadsAborted)
 {
     static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
     static bool inAbort = false;
@@ -1629,7 +1705,8 @@ bool xLightsFrame::AbortRender(int maxTimeMS)
         for (size_t row = 0; row < rpi->numRows; ++row) {
             if (rpi->jobs[row]) {
                 rpi->jobs[row]->AbortRender();
-                abortCount++;
+                ++abortCount;
+                ++abortedRenderJobs;
             }
         }
     }
@@ -1658,17 +1735,20 @@ bool xLightsFrame::AbortRender(int maxTimeMS)
     }
     logger_base.info("    Aborting renderers ... Done");
     inAbort = false;
+    if( numThreadsAborted != nullptr ) {
+        *numThreadsAborted = abortCount;
+    }
     return renderProgressInfo.empty();
 }
 
-void xLightsFrame::RenderGridToSeqData(std::function<void()>&& callback) {
+void xLightsFrame::RenderGridToSeqData(std::function<void(bool)>&& callback) {
 
     static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
 
     BuildRenderTree();
     if (renderTree.data.empty()) {
         //nothing to do....
-        callback();
+        callback(false);
         return;
     }
 
@@ -1676,7 +1756,7 @@ void xLightsFrame::RenderGridToSeqData(std::function<void()>&& callback) {
 
     const int numRows = _sequenceElements.GetElementCount();
     if (numRows == 0) {
-        callback();
+        callback(false);
         return;
     }
     std::list<Model *> models;
@@ -1706,7 +1786,7 @@ void xLightsFrame::RenderGridToSeqData(std::function<void()>&& callback) {
             wxStopWatch sw3;
             Render(_sequenceElements, _seqData, models, restricts, 0, SeqData.NumFrames() - 1, true, false, [sw3, callback] {
                 printf("%s  Render 3:  %ld ms\n", (const char *)xlightsFilename.c_str(), sw3.Time());
-                callback();
+                callback(abortedRenderJobs > 0);
             } );
         });
     });
@@ -1779,7 +1859,7 @@ void xLightsFrame::RenderEffectForModel(const std::string &model, int startms, i
 
             logger_base.debug("Rendering %d models %d frames.", m.size(), endframe - startframe + 1);
 
-            Render(_sequenceElements, _seqData, it->renderOrder, m, startframe, endframe, false, true, [] {});
+            Render(_sequenceElements, _seqData, it->renderOrder, m, startframe, endframe, false, true, [] (bool) {});
         }
     }
 }
@@ -1834,7 +1914,7 @@ void xLightsFrame::RenderTimeSlice(int startms, int endms, bool clear) {
     _appProgress->SetValue(0);
     _appProgress->Reset();
     wxStopWatch sw; // start a stopwatch timer
-    Render(_sequenceElements, _seqData, models, restricts, startframe, endframe, true, clear, [this, sw] {
+    Render(_sequenceElements, _seqData, models, restricts, startframe, endframe, true, clear, [this, sw] (bool aborted) {
         static log4cpp::Category &logger_base2 = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base2.info("   Effects done.");
         ProgressBar->SetValue(100);

@@ -199,7 +199,9 @@ void LOROptimisedOutput::GenerateCommand(uint8_t d[], size_t& idx, int unit_id, 
 #pragma endregion
 
 #pragma region Constructors and Destructors
-LOROptimisedOutput::LOROptimisedOutput(SerialOutput* output) : LOROutput(output) {
+LOROptimisedOutput::LOROptimisedOutput(const LOROptimisedOutput& from) :
+    LOROutput(from), _controllers(from._controllers)
+{
     InitialiseTypes();
     SetupHistory();
 }
@@ -500,10 +502,10 @@ void LOROptimisedOutput::AllOff() {
 
 #pragma region UI
 #ifndef EXCLUDENETWORKUI
-void LOROptimisedOutput::AddProperties(wxPropertyGrid* propertyGrid, bool allSameSize, std::list<wxPGProperty*>& expandProperties) {
+void LOROptimisedOutput::AddProperties(wxPropertyGrid* propertyGrid, wxPGProperty *before, Controller *c, bool allSameSize, std::list<wxPGProperty*>& expandProperties) {
 
     auto devs = GetControllers().GetControllers();
-    auto p = propertyGrid->Append(new wxUIntProperty("Devices", "Devices", devs.size()));
+    auto p = propertyGrid->Insert(before, new wxUIntProperty("Devices", "Devices", devs.size()));
     p->SetAttribute("Min", 1);
     p->SetAttribute("Max", 100);
     p->SetEditor("SpinCtrl");
@@ -513,7 +515,7 @@ void LOROptimisedOutput::AddProperties(wxPropertyGrid* propertyGrid, bool allSam
 
         auto isPixie = StartsWith(it->GetType(), "Pixie");
 
-        wxPGProperty* p2 = propertyGrid->Append(new wxPropertyCategory(it->GetType() + " : " + it->GetDescription(), wxString::Format("Device%d", i)));
+        wxPGProperty* p2 = propertyGrid->Insert(before, new wxPropertyCategory(it->GetType() + " : " + it->GetDescription(), wxString::Format("Device%d", i)));
 
         p = propertyGrid->AppendIn(p2, new DeleteLorControllerProperty(GetControllers(), _("Delete this device"), wxString::Format("DeleteDevice/%d", i)));
         propertyGrid->LimitPropertyEditing(p);
@@ -563,7 +565,7 @@ void LOROptimisedOutput::HandleExpanded(wxPropertyGridEvent& event, bool expande
     }
 }
 
-bool LOROptimisedOutput::HandlePropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager) {
+bool LOROptimisedOutput::HandlePropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager, Controller *c) {
 
     wxString name = event.GetPropertyName();
 
@@ -646,7 +648,7 @@ bool LOROptimisedOutput::HandlePropertyEvent(wxPropertyGridEvent& event, OutputM
         outputModelManager->AddASAPWork(OutputModelManager::WORK_NETWORK_CHANGE, "ControllerSerial::HandlePropertyEvent::DeviceDescription");
     }
 
-    if (Output::HandlePropertyEvent(event, outputModelManager)) return true;
+    if (Output::HandlePropertyEvent(event, outputModelManager, c)) return true;
 
     return false;
 }

@@ -55,6 +55,12 @@ static wxPGChoices POLY_CORNERS(wxArrayString(3, POLY_CORNER_VALUES));
 std::vector<std::string> PolyLineModel::POLYLINE_BUFFER_STYLES;
 
 const std::vector<std::string> &PolyLineModel::GetBufferStyles() const {
+
+    if (!hasIndivSeg)
+    {
+        return Model::DEFAULT_BUFFER_STYLES;
+    }
+
     struct Initializer {
         Initializer() {
             POLYLINE_BUFFER_STYLES = Model::DEFAULT_BUFFER_STYLES;
@@ -72,7 +78,7 @@ bool PolyLineModel::IsNodeFirst(int n) const
 
 void PolyLineModel::InitRenderBufferNodes(const std::string& type, const std::string& camera,
     const std::string& transform,
-    std::vector<NodeBaseClassPtr>& newNodes, int& BufferWi, int& BufferHi, bool deep) const
+    std::vector<NodeBaseClassPtr>& newNodes, int& BufferWi, int& BufferHi, int stagger, bool deep) const
 {
     if (type == "Line Segments" && hasIndivSeg) {
         BufferHi = num_segments;
@@ -108,7 +114,7 @@ void PolyLineModel::InitRenderBufferNodes(const std::string& type, const std::st
         ApplyTransform(transform, newNodes, BufferWi, BufferHi);
     }
     else {
-        Model::InitRenderBufferNodes(type, camera, transform, newNodes, BufferWi, BufferHi);
+        Model::InitRenderBufferNodes(type, camera, transform, newNodes, BufferWi, BufferHi, stagger);
     }
 }
 
@@ -1244,8 +1250,7 @@ int PolyLineModel::OnPropertyGridChange(wxPropertyGridInterface* grid, wxPropert
         AddASAPWork(OutputModelManager::WORK_RELOAD_MODEL_FROM_XML, "PolyLineModel::OnPropertyGridChange::AlternateNodes");
         AddASAPWork(OutputModelManager::WORK_REDRAW_LAYOUTPREVIEW, "PolyLineModel::OnPropertyGridChange::AlternateNodes");
         return 0;
-    }
-    else if (!GetModelScreenLocation().IsLocked() && "ModelHeight" == event.GetPropertyName()) {
+    } else if (!GetModelScreenLocation().IsLocked() && !IsFromBase() && "ModelHeight" == event.GetPropertyName()) {
         height = event.GetValue().GetDouble();
         if (std::abs(height) < 0.01f) {
             if (height < 0.0f) {
@@ -1264,7 +1269,8 @@ int PolyLineModel::OnPropertyGridChange(wxPropertyGridInterface* grid, wxPropert
         AddASAPWork(OutputModelManager::WORK_REDRAW_LAYOUTPREVIEW, "PolyLineModel::OnPropertyGridChange::ModelHeight");
         return 0;
     }
-    else if (GetModelScreenLocation().IsLocked() && "ModelHeight" == event.GetPropertyName()) {
+        else if ((GetModelScreenLocation().IsLocked() || IsFromBase()) && "ModelHeight" == event.GetPropertyName())
+        {
         event.Veto();
         return 0;
     }

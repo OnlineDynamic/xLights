@@ -11,6 +11,262 @@ Issue Tracker is found here: www.github.com/smeighan/xLights/issues
 
 XLIGHTS/NUTCRACKER RELEASE NOTES
 ---------------------------------
+2023.17 Oct 16, 2023
+   -- enh (dkulp) Add monitor attribute for controllers, FPP upload of co-universes will set priority/monitoring/deDup settings
+   -- enh (Kyle Grymonprez) Add Node Count to model tooltips
+   -- enh (keith) FPPConnect also show eseq files in subdirectories
+   -- enh (dartunder) Change the default color for locked selected effects to increase contrast
+   -- enh (keith) Add optional arrow to gridlines that points to the front
+   -- enh (Edward Catchpole) Show friendly names for known devices in the Import From Controller dialog
+   -- bug (dkulp) Add a bunch of logging to FPPConnect HTTP messages
+   -- bug (dkulp) Importing/loading some old sequences may cause crashes as FadeIn/Out used to allow spaces
+   -- bug (dartunder) Set the rotation to match the original when replacing a model
+   -- bug (keith) Fix total channels returns zero if FPP or other non-channel controller is last in the list
+   -- bug (dkulp) FPPConnect - tried to examine empty IP address/host names
+   -- bug (dkulp) If model from base directory is updated, it is removed from all groups
+   -- bug (dkulp) If model from base directory's start channel doesn't match, don't mark "changed" if it will be auto-calculated
+   -- bug (keith) Add back in divide timings for layers 1+ on timing tracks
+   -- bug (scott) HinksPix - ac receivers have inconsistent channel counts, just use 3 channels per pixel
+   -- bug (Edward Catchpole) Fix inactive twinkly controllers blocking UI
+   -- bug (dartunder) FPPConnect - Don't resolve bad.address to 255.255.255.255
+   -- bug (dartunder) FPPConnect - eliminate duplicate FPP entries for FPP connect
+   -- bug (dkulp) FPPConnect - uploads eseq files to sequences directory
+2023.16 Oct 9, 2023
+   -- enh (keith) Pre-populate effect preset rename field with current name
+   -- enh (dartunder) Save/restore test mode tab selection
+   -- enh (keith) Add Find for effect import dialog
+   -- enh (keith) Add a Halloween palette with orange and a purple that look good on pixels without playing with gamma
+   -- enh (dkulp) Import effects - save/restore the "Lock" checkbox value
+   -- bug (dkulp) Fix crash with popup menus on layout panel
+   -- bug (dkulp) FPP Connect - fix hang when uploading to older controllers that use jqupload method
+   -- bug (dartunder) Fix test mode for controller sync enabled with FPP "Player Only"
+   -- bug (dkulp) Possibly fix some audio device crashes when Mac goes into/out of sleep mode
+   -- bug (dkulp) Fix a spurious log warning on file load that was incorrect
+   -- bug (dkulp) Fix some issues of loading sequences always requiring a re-render
+   -- bug (dkulp) FPP Connect - fix detection of some capes that use "v2" pinouts
+   -- bug (keith) Fix "Base layout" appearance in dark mode
+   -- bug (keith) Fix Color Wheel does not always return a feedback color on the UI
+2023.15 Oct 2, 2023
+   -- enh (keith)     Add Twinkly 3D Model import
+   -- enh (keith)     Add auto label of timing tracks
+   -- enh (keith)     Add option to lock effects on import
+   -- enh (keith)     Allow navigation of sequence settings metadata
+   -- enh (keith)     Add support for base show folders with inherited controllers and models
+   -- enh (keith)     Add filter labels to shape effect
+   -- enh (keith)     In colour tooltips show closest colour name
+   -- enh (keith)     Add duplicate effect
+   -- enh (keith)     Add visual indicator if model/group contains effects on visible or invisible layers/submodels/strings/nodes
+   -- enh (keith)     Add visual hint in visualiser if pixels per port makes 40 FPS impossible
+   -- enh (keith)     Add option to fade piano keys on press
+   -- enh (matte)     Add optional timeline zooming to mouse
+   -- enh (matte)     Add keybindings for various toggling of render
+   -- enh (djulien)   Allow blank effect type to match all effects in select effects
+   -- enh (djulien)   Show models with effects when trying to make it master or when opening a sequence containing missing models
+   -- enh (dkulp)     Increase BBB max pixels to 1600
+   -- enh (scott)     Add genius pro controller
+   -- enh (dartunder) Add option to keep size and location of models being replaced
+   -- bug (keith)     Fix buffer stagger disabled if effect dropped using key bindings
+   -- bug (keith)     Fix sketch effect check sequence not reporting missing images
+   -- bug (dklup)     Fix marque effect in release builds calculating incorrect buffer size
+   -- bug (scott)     Fix falcon v4 upload of sequences
+   -- bug (dartunder) Fix current calcs in visualiser for multi-light nodes
+   -- bug (scott)     Fix ES Pixel Stick 3.2 upload
+2023.14 Sep 16, 2023
+   -- enh (keith)   Twinkly reconnect after power cycle
+   -- enh (scott)   Add more WLED pixel types
+   -- enh (scott)   Update SanDevices upload to work with 5.5/5.1 firmware
+   -- enh (keith)   Preliminary Falcon V5 support
+   -- enh (scott)   FPP controllers default to DMX-Open instead of DMX-Pro
+   -- enh (scott)   Add Full xLights Control for HinksPix
+   -- enh (dkulp)   FPP Connect - show discovered but unsupported FPP instances
+   -- enh (lasershane) Implement model layout options for Distribute Depth and Alight Depth Center
+   -- enh (dartunder) Update group center mark to use handle size selection
+   -- enh (MrPierreB) Two new layer blending styles
+   -- bug (dkulp)   Fix parsing of JSON with unicode characters
+   -- bug (scott)   ESPixelStick should not allow "KeepChannelNumbers" setting
+   -- bug (scott)   Allow more than 12 universes for ESPixelStick on controllers that support it
+   -- bug (scott)   AlphaPix/ESPixelStick/SanDevices/WLED - make sure valid controller settings are used for various things
+   -- bug (keith)   Disable Twinkly outputs still try to connect
+   -- bug (dartunder) Fix hyperlink for FPP instances behind proxy in FPP Connect
+   -- bug (gjones)  Fix bug where inactive models could be selected in 2D
+   -- bug (gjones)  Fix import bug for models with Per Model render buffers when a single model of same name exists.
+2023.13 Aug 22, 2023
+   -- enh (ClutchplateDude) Expose color count to shaders
+   -- enh (scott)   FPP 6+ no longer needs to switch to bridge mode
+   -- enh (dartunder) FPPConnect - enhance "Cancel" button handling
+   -- enh (scott)   Change downloading of Lua Scripts to github
+   -- enh (scott)   Add RGB hex values to color tooltips
+   -- enh (scott/dkulp) FPP Connect - bunch more logging to help diagnose FPPConnect/discovery issues
+   -- enh (MartinMueller) Add support for HTTP based ESP configuration
+   -- enh (dartunder) Increase size of group center mark, implement dynamic scale
+   -- enh (dkulp)   Allow up to 100 layers for Circle and Star models
+   -- enh (scott)   Add Experience Pro controllers
+   -- bug (dkulp)   Bunch of FPP Connect fixes/updates to perform better, handle errors better, etc...
+   -- bug (scott)   Fix label alignment in DMXPanel
+   -- bug (scott)   Controller model property disappears on controllers in e1.31 mode
+   -- bug (mjunek)  Fix issues with DPIPixels uploads for Hanson rPi-28D
+   -- bug (scott)   Fix Force Custom Color in State Dialog
+   -- bug (merryoncherry) Fix some potential thread safety issues in WLED effects
+   -- bug (dartunder) Fix FPPConnect progress dialog always on top
+   -- bug (scott)   Metronome effect with tags doesn't save tags
+   -- bug (scott)   Added hinkspix checks to verify correct output boards are connected
+2023.12 Aug 9, 2023
+   -- enh (gil)     Improve model creation in 3D mode.  Models used to not place well depending on how you had the view rotated.
+                    Now xLights will detect the view angle and make a decision on the best place to start the model so you shouldn't
+                    run into models being created way in front or behind the view camera.
+                    You can now rotate to a side view and draw the models rotated 90 degrees.
+                    If you run into model placement issues let me know.
+   -- enh (dkulp)   FPPConnect - use parallel uploads of FSEQ files to multiple controllers
+   -- enh (scott)   Allow picture type singing faces on groups
+   -- enh (scott)   Add effect count to SearchPanel
+   -- enh (dkulp)   Use FPP7 Cape API's to verify cape pinout is usable prior to upload
+   -- enh (dkulp)   Minor render speedup by allowing models to render non-dependent layers while waiting for dependent models/groups to finish the frame
+   -- enh (merryoncherry)  Adjust group default camera mapping on import
+   -- enh (scott)   Purge Backup needs to leave one folder so there is at least one backup
+   -- bug (dkulp)   Fix hang in SingleStrand effect if the effect is a single period long
+   -- bug (scott)   Fix HinksPix 80 only updating 48 ports, faster upload to HinksPix
+   -- bug (scott)   Fix RGB2Go and E1-Wifi auto layout
+   -- bug (gil)     Fix model selection in 2D for models based on BoxedScreenLocation (Matrix, Trees, etc.). Fixes #3887
+   -- bug (gil)     Fix arches not rendering correctly when rotated
+   -- bug (gil)     Fix some bugs with SketchEffect with closed paths
+2023.11 July 23, 2023
+   -- enh (keith)   Make Smart Receivers a more visual component of the visualizer
+   -- enh (keith)   Add smart remote tooltip to visualiser
+   -- enh (keith)   Fast change smart remote number (and all models on it) by right-clicking on the remote in visualiser
+   -- enh (keith)   Add smart remote drag/drop in visualiser
+   -- enh (scott)   Add Controller Cap and Serial protocol information to automation API JSON
+   -- enh (scott)   Add ability to set Model Properties through automation API
+   -- enh (scott)   Added Metronome w/ Tags for use with state effect
+   -- enh (scott)   Added name support to getControllerPortMap command, added group and models filters to getModels
+   -- bug (scott)   Added FPP Proxy IP checks
+   -- bug (dkulp)   Attempt to workaround issues on Windows when filenames and FPP Connecte are not in UTF-8 encoding
+   -- bug (keith)   Fix incorrect month in log files
+   -- bug (keith)   Workaround for Minleon Smart T's with RGB+ pixels
+   -- bug (dkulp)   Fix crash on save if sequence references models that don't exist
+   -- bug (dkulp)   Another attempt to get the controller properties to not rebuild the entire list all the time, prevents crashes
+   -- bug (Pierre Beukes) Fix Moving Head Export: Include slew limits
+   -- bug (dkulp)   Fix problems with displaying models with circle/blended circle after changing it on layout page
+   -- bug (dkulp)   If resizing/moving/rotating multiple models, make sure the Undo records everything instead of the single selected model
+2023.10 June 30, 2023
+   -- enh (dkulp)   Add node number under mouse cursor to lower right corner of SubModelDialog
+   -- enh (scott)   Add zero layer size for circle model (for center pixel)
+   -- enh (keith)   Enable ESC to close visualizer
+   -- enh (merryoncherry) "Batch Render" enhancements to disable various warnings, modal dialogs, etc...
+   -- enh (keith)   Allow override of Twinkly http port
+   -- enh (MartinMueller) Add full set of ESPv4 variants
+   -- enh (scott)   Add HinksPix Pro 80 support
+   -- enh (dkulp)   Enable HTTP/2 for FPP Connect and Discovery
+   -- bug (merryoncherry) Fix issues with bulk edit of effects
+   -- bug (dkulp)   Fix crashes when selecting Vendor/Model/Variant using keyboard
+   -- bug (dkulp)   Fix FPP Connect if there is a powered on Falcon v4 controller on the network
+   -- bug (dkulp)   Fix square pixel type on Windows
+   -- bug (scott)   Serial port configuration fixes
+   -- bug (dkulp)   Fix animated GIFs not working properly
+2023.09 June 3, 2023
+   -- enh (scott)   Add CSV Submodel import
+   -- enh (merryoncherry) Single strand chase offset and static modes
+   -- enh (scott)   Add Effect Count to xLights and Vixen3 imports
+   -- enh (dkulp)   Cache animated GIF frames during render to speed up looping renders. (uses more memory)
+   -- bug (dkulp)   Sort by Z for house preview on Sequencer tab to match layout tab
+   -- bug (dkulp)   Fix loading of older xlights_network files causing crashes
+   -- bug (dkulp)   Fix pictures effect value curve min/max
+   -- bug (keith)   Don't use NOWAIT on datagram sockets to avoid dropping packets
+   -- bug (keith)   Fix Falcon F48v4 detection
+   -- bug (scott)   Fix Linux app name parsing for launcher
+   -- bug (dkulp)   Fix display issues on OSX with "Blended Circle" pixels in a group
+2023.08 May 13, 2023
+   -- enh (dkulp)   Windows/Linux - redo OpenGL to be based on Metal architecture
+                     - removes OpenGL 1.x support (retains OpenGL 2.x)
+                     - Provides shading of 3D models similar to Metal
+   -- enh (keith)   Violin support for guitar effect
+   -- enh (keith)   Greater control of the wave shape on guitar strings
+   -- enh (kevin)   Allow customization of lightning width
+   -- enh (dkulp)   Don't mark GPU rendering as experimental, it works
+   -- enh (kevin)   Add simple path re-ordering to SketchAssistPanel
+   -- bug (keith)   Dont show falcon controllers in FPP connect if in bridge mode
+   -- bug (keith)   Fix Falcon V4 DDP one based does not upload correctly
+   -- bug (dkulp)   Fix some DPI scaling issues on Windows
+   -- bug (dkulp)   Fix a BUNCH of issues with DPI scaling on Linux
+   -- bug (keith)   Fix duplication of face files in zip packages
+   -- bug (keith)   Fix multiple panels attached to on port in visualizer
+   -- bug (scott)   Fix import of some AC model effects
+   -- bug (keith)   Timing marks cannot be dropped by clicking waveform and pressing t
+   -- bug (keith)   Suppress controller name IP address resolution if a controller is marked as inactive
+   -- bug (keith)   Color multistring custom model nodes differently in node layout
+2023.07 April 25, 2023
+   -- enh (keith)   Add -x option to xSchedule to silently exit if xSchedule is already running
+   -- enh (keith)   Add some Hanson Electronics boards
+   -- enh (keith)   Add ability to invert channels on DMX effect
+   -- enh (keith)   Add value curve to picture effect centre
+   -- enh (keith)   When user presses update on effect/colours panel and has > 1 effect selected warn the user about what will happen
+   -- enh (keith)   Add cleanupFileLocations and saveLayout APIs
+   -- enh (keith)   Add stagger to stacked model group buffers
+   -- enh (keith)   Add SVG support to VU Meter level shapes
+   -- enh (keith)   Add warmup frames to snowflakes and meteors effect
+   -- enh (keith)   Allow suppression of dark mode on windows
+   -- enh (keith)   Add video sampling instead of image resizing to video effect
+   -- enh (keith)   Add ability to reset an effects settings explicitly
+   -- enh (keith)   Add chord support to guitar effect ... prefix C before note so CA is the A chord
+   -- enh (keith)   For superstrings > 3 channels add support for RGBW colour handling to control behaviour
+   -- enh (dklup)   FPP Connect upload content to the appropriate directory
+   -- enh (scott)   Increase ESPixelStick outputs to 8
+   -- bug (moc)     Fix ripple effect SVG settings
+   -- bug (keith)   Fix text effect not respecting \n as new line
+   -- bug (keith)   Fix QM crash if using them after doing a notes import
+   -- bug (keith)   Fix QM import creates illegal timing tracks with zero length timing marks and overlapping timing marks
+   -- bug (keith)   Fix show/hide effect assist overwrites effect assist preference
+   -- bug (keith)   Only show line segments buffer on a polyline with indiv segments
+   -- bug (keith)   Fix Advatek upload broken
+   -- bug (keith)   Update time display when waveform is clicked
+2023.06 April 10, 2023
+   -- enh (keith)   Add Guitar effect
+   -- enh (scott)   Add JSON endpoints getModel, getControllerPortMap, getShowFolder
+   -- enh (moc)     Add a bunch of improvements to Ripple
+   -- enh (moc)     Add a bunch of utilities to the submodels dialog
+   -- enh (kevin)   Add transformations - rotate & flip
+   -- bug (dkulp)   Upgrade wxWidgets on Linux to address GTK issues
+   -- bug (dkulp)   Update CURL calls to set Accept-Encoding to allow gzip/deflate to work for all
+   -- bug (dkulp)   Fix some discovery issues
+   -- bug (dkulp)   Fix FPP file manipulation on 6.3.3+
+   -- bug (dkulp)   Fix models not drawing in layout
+   -- bug (keith)   Fix compare between version numbers to work with subversions
+   -- bug (scratch) Fix some effects panel scroll bar
+   -- bug (moc)     Fix some value curves not resetting
+2023.05 March 27, 2023
+   -- enh (dkulp)  MacOS - Use Bonjour to help discover FPP instances
+   -- enh (dkulp)  FPPConnect - better support for FPP7 instances
+   -- enh (merryoncherry) Ability to press ENTER to save a submodel name
+   -- enh (scott)  Add Copy States to State Dialog
+   -- enh (Pierre.Beukes) Confirmation prompt when cancelling the Submodels creation dialog
+   -- enh (keith)  Add a text filter to the VUMeter timing track triggers to selectively react to timing track effects
+   -- bug (dkulp)  Z-Sort models before display to better handle transparency
+   -- bug (keith)  MP4 export requires at least 16x16
+2023.04 March 11, 2023
+   -- enh (keith)  Add "Build a Light Show" vendor to prop downloads
+   -- enh (dkulp)  Add new K64D-B and K8-Pi controllers
+   -- enh (keith)  Add CMY support to DMX moving heads
+   -- enh (keith)  Add ability to zoom to the selection in the sequencer tab
+   -- change (keith) Default ArtNet universes to 510 channels when discovered
+   -- bug (keith)  Audio does not stop when jukebox stops
+   -- bug (merryoncherry) Fix some threading issues with Text/Shape effects on Windows
+   -- bug (dkulp)  In some cases, the logs on MacOS could not be created.
+   -- bug (merryoncherry/dkulp) Fix some bad rendering with Warp effects
+   -- bug (merryoncherry) Fix bugs with compress/expand of node ranges in SubModel node selection
+   -- bug (merryoncherry) ValueCurves for Ripple Rotation were not working
+   -- bug (MrPierreB) Metronome timing tracks were not available for import
+   -- bug (scott)  Fix background image crash on Windows
+2023.03 February 22, 2023
+   -- enh (dkulp)  Add ability to create "FPP Command Preset" and "FPP Effects" timing tracks and save that in fseq files (FPP 7)
+   -- enh (dkulp)  Add FPPConnect upload of fseq/media to FPP7
+   -- enh (keith)  Change jukebox to play the sequence looped for the effect duration rather than just selecting the effect
+   -- enh (merryoncherry) New 5x5 Font for text effect
+   -- bug (merryoncherry) Fix icons for Import Effects panel not matching model
+   -- bug (merryoncherry) Fix save icon remaining pink if saving linked network/models
+   -- bug (keith)  Overlap checks does not always identify model
+   -- bug (scott)  Fix crash when switching from player
+   -- bug (scott)  Allow Serial Outputs On Virtual Matrix
+   -- bug (keith)  Fix crash when setting smart remote type on a port with no models.
+   -- bug (scott)  Fix F##v4 upload
 2023.02 February 01, 2023
    -- enh (scott)  Add "dark mode" for Windows
    -- enh (lutz)   Add Effect Duration to the variables available to shaders
@@ -33,7 +289,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- enh (dkulp)  Update to latest wxWidgets+patches so Scott can play with Dark Mode on Windows
 2022.26 December 29, 2022
    -- enh (scott)  Added ability to duplicate or "tile" an effect
-   -- bug (dkulp)  macOS - Fix some issues in SubModel dialog where everythingn will grey out after deleting a submodel
+   -- bug (dkulp)  macOS - Fix some issues in SubModel dialog where everything will grey out after deleting a submodel
    -- bug (dkulp)  Fix some crashes if supress frames is used at the beginning of an effect
    -- bug (dkulp)  Fix memory leak with GIF images
    -- bug (gil)    Fix mutex deadlock and fix hitting wxassert in the debugger when importing sequences with timing tracks
@@ -132,7 +388,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
 2022.20 October 17, 2022
    -- enh (scott)  Add Experience Lights upload support
    -- enh (scott)  Add VU Meter Timing Event chase to/from middle
-   -- enh (keith)  Add menu option ot re-enable rendering on all models
+   -- enh (keith)  Add menu option to re-enable rendering on all models
    -- enh (keith)  Add the ability to light up the port number of pixels on each port on a controller in controller test
    -- bug (dkulp)  Fix auto-upload of FPP config causing reset to player mode with FPP6
    -- bug (dkulp)  Attempt to fix crash on macOS when double clicking on xseq files
@@ -151,10 +407,10 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- enh (keith)  Add Advatek v8 protocol support
    -- enh (keith)  Separate Advatek expanded mode support as a variant. 
                    Users who were using expanded mode may need to change variant to upload.
-   -- enh (keith)  Add twinkly products as recognised controllers
+   -- enh (keith)  Add twinkly products as recognized controllers
    -- enh (keith)  Show as an error non selection of controller model
    -- enh (keith)  Give remote falcon users in xSchedule more control over logging volume
-   -- bug (dkulp)  Fix issue where model groups dont update until xLights restart
+   -- bug (dkulp)  Fix issue where model groups don't update until xLights restart
    -- bug (dkulp)  Fix crashes where Fire/Candle effect is used on a submodel
    -- bug (dkulp)  Fix crashes where inactive models are added to groups
    -- bug (dkulp)  Ensure BBB serial output uses the same pinout version as strings
@@ -162,10 +418,10 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- bug (keith)  Fix expanded mode not being set on Advatek boards when it should be
    -- bug (keith)  Fix Twinkly protocol not proxyable via FPP
    -- bug (keith)  Fix not all minleon controllers show the minleon protocols
-   -- bug (keith)  Slightly improve visual artefacts on pixture effect on windows due to wxWidgets bug on visual studio
+   -- bug (keith)  Slightly improve visual artifacts on pixture effect on windows due to wxWidgets bug on visual studio
    -- bug (keith)  Fix unnecessary reboot prompt when uploading DDP to F48 V3 controllers
    -- bug (keith)  Fix face shimmer is not frame rate independent
-   -- bug (gil)    Fix moving heads dont move smoothly on windows
+   -- bug (gil)    Fix moving heads don't move smoothly on windows
 2022.18 September 28, 2022
    -- enh (dkulp)  Add discovery for new BBShiftString FPP capes
    -- enh (dkulp)  Add upload config support for K128D-B cape
@@ -179,7 +435,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- enh (scott)  add "${UPPER}" and "${LOWER}" to Text Effect
    -- enh (scott)  Added JSON format import mapping file.
    -- enh (scott)  Added Align Front, Back, & To Ground KeyBindings.
-   -- enh (keith)  Add german dictionary to install, user will need to manually add
+   -- enh (keith)  Add German dictionary to install, user will need to manually add
    -- enh (keith)  Allow shimmer to be suppressed on a face effect
    -- enh (keith)  Allow double click to manually set custom value curve Y values
    -- enh (keith)  Add ability to match video effect duration to the selected video
@@ -205,7 +461,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- enh (scott)  Added duplicate node custom model checkbox
    -- enh (scott)  Add smart remote and model chaining details to DXF export
    -- enh (scott)  Added Bulk Edit to Text Effect File Picker
-   -- bug (keith)  Fix picture files showing red as if there is an error when there isnt an error
+   -- bug (keith)  Fix picture files showing red as if there is an error when there isn't an error
    -- bug (keith)  Dont use render cache for text effect if text is coming from a file
    -- bug (keith)  Fix a bug with importing models and adding them correctly to existing groups
    -- bug (keith)  Fix speed value curve reset on the video effect
@@ -222,7 +478,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- bug (scott)  Disable Universe Per String, when Auto Size is disabled as it does nothing
    -- bug (dkulp)  Fix crash for some per model renders
    -- bug (dkulp)  Fix DMX models returning zero size resulting in problems with centre calculation
-   -- bug (cyber)  Fix host name validation for controller reports some valid names as errors
+   -- bug (cyber)  Fix hostname validation for controller reports some valid names as errors
 2022.16 August 22, 2022
    -- enh (keith)  Allow optional turn off of house and model window docking
    -- enh (keith)  On Falcon and FPP allow definition of zigzag in xlights for upload
@@ -274,7 +530,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- bug (keith) Fix rotozoom order not saved
    -- bug (keith) Fix issue with audio file upload to FalconV4
    -- bug (keith) Fix export as custom model does not export depth
-   -- bug (keith) Fix some duplication in transition time combobox behaviour
+   -- bug (keith) Fix some duplication in transition time combobox behavior
    -- bug (keith) Fix video reported as missing if using sequence media
    -- bug (scott) Fix color error in sketch effect
    -- bug (scott) Fix issue with PiHat upload
@@ -302,7 +558,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- bug (keith) Show search and select effect times formatted.
    -- bug (keith) Fix link colour on windows when in dark mode
    -- bug (keith) Add back manual custom model generation for tricky models to video
-   -- bug (nash)  Fix numerous issues with perpare audio feature
+   -- bug (nash)  Fix numerous issues with prepare audio feature
    -- bug (dkulp) Fix some corruption of canvas effect buffers when layers below use subbuffers
    -- bug (dkulp) Fix canvas mode effects that use Per Model render styles.
    -- bug (dkulp) Fix issue when loading a xsq by double clicking on it
@@ -376,7 +632,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- enh (scott)    Attempt to auto-find singing faces files
    -- enh (scott)    Several updates to Faces dialog
    -- enh (keith)    Add tag color to model groups
-   -- enh (keith)    Check Sequence - flag invalide/missing background images
+   -- enh (keith)    Check Sequence - flag invalid/missing background images
    -- enh (keith)    Move some toolbar buttons around, reduce screen usage of toolbars
    -- enh (keith)    State Effect  - Significantly increase maximum states supported
    -- enh (keith)    Select all timing events using right click on a timing track
@@ -386,7 +642,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- bug (keith)    Some videos may not fully play due to strange way they calculate length
    -- bug (keith)    Make backup of backup folder exclusion case insensitive
    -- bug (keith)    State  Effect - fix not rendering on first dropped
-   -- bug (keith)    Node layout for custom model with multiple strings but no indiv start nodes incorrectly shows the string number
+   -- bug (keith)    Node layout for custom model with multiple strings but no individual start nodes incorrectly shows the string number
    -- bug (dkulp)    Fix Image Model transparency issues, make sure not "dark" on layout panel
    -- bug (keith)    Reset to default waveform on load of new audio after custom filter applied
 2022.07 March 28, 2022
@@ -428,7 +684,7 @@ XLIGHTS/NUTCRACKER RELEASE NOTES
    -- enh (keith)    Add a reverse lookup from rendered data to source effects
    -- enh (cpinkham) Add z coordinate to the FPP virtual display map
    -- enh (dkulp)    Adjust xLights calls to FPP to use tweaked API
-   -- bug (keith)    Fix presets using per model buffers dont preview correctly
+   -- bug (keith)    Fix presets using per model buffers don't preview correctly
    -- bug (keith)    Fix model default type causes face definition to not save correctly
    -- bug (keith)    Fix polyline reports incorrect real world dimensions
    -- bug (keith)    Fix missing gridlines in morph effect assist

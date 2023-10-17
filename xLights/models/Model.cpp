@@ -56,7 +56,10 @@
 #include "../xSchedule/wxJSON/jsonreader.h"
 #include "CachedFileDownloader.h"
 
+#include <algorithm>
+
 #define MOST_STRINGS_WE_EXPECT 480
+#define MOST_CONTROLLER_PORTS_WE_EXPECT 128
 
 const long Model::ID_LAYERSIZE_INSERT = wxNewId();
 const long Model::ID_LAYERSIZE_DELETE = wxNewId();
@@ -128,6 +131,8 @@ static void clearUnusedProtocolProperties(wxXmlNode* node)
 static const std::string EFFECT_PREVIEW_CACHE("ModelPreviewEffectCache");
 static const std::string MODEL_PREVIEW_CACHE_2D("ModelPreviewCache3D");
 static const std::string MODEL_PREVIEW_CACHE_3D("ModelPreviewCache2D");
+static const std::string LAYOUT_PREVIEW_CACHE_2D("LayoutPreviewCache3D");
+static const std::string LAYOUT_PREVIEW_CACHE_3D("LayoutPreviewCache2D");
 
 
 Model::Model(const ModelManager& manager) : modelManager(manager)
@@ -978,9 +983,8 @@ void Model::AddControllerProperties(wxPropertyGridInterface* grid)
     wxPGProperty* sp = grid->AppendIn(p, new wxUIntProperty("Port", "ModelControllerConnectionPort", GetControllerPort(1)));
     sp->SetAttribute("Min", 0);
     if (caps == nullptr || protocol == "") {
-        sp->SetAttribute("Max", 48);
-    }
-    else {
+        sp->SetAttribute("Max", MOST_CONTROLLER_PORTS_WE_EXPECT);
+    } else {
         if (IsSerialProtocol()) {
             sp->SetAttribute("Max", caps->GetMaxSerialPort());
         } else if (IsPixelProtocol()) {
@@ -990,7 +994,7 @@ void Model::AddControllerProperties(wxPropertyGridInterface* grid)
         } else if (IsVirtualMatrixProtocol()) {
             sp->SetAttribute("Max", caps->GetMaxVirtualMatrixPort());
         } else {
-            sp->SetAttribute("Max", 48);
+            sp->SetAttribute("Max", MOST_CONTROLLER_PORTS_WE_EXPECT);
         }
     }
     sp->SetEditor("SpinCtrl");
@@ -3546,7 +3550,8 @@ unsigned int Model::GetNumChannels() {
 
 void Model::SetPosition(double posx, double posy) {
 
-    if (GetModelScreenLocation().IsLocked()) return;
+    if (GetModelScreenLocation().IsLocked() || IsFromBase())
+        return;
 
     GetModelScreenLocation().SetPosition(posx, posy);
     IncrementChangeCount();
@@ -3609,7 +3614,7 @@ const std::string &Model::NodeType(size_t nodenum) const {
     return Nodes.size() && nodenum < Nodes.size() ? Nodes[nodenum]->GetNodeType(): NodeBaseClass::RGB; //avoid memory access error if no nods -DJ
 }
 
-void Model::GetBufferSize(const std::string &type, const std::string &camera, const std::string &transform, int &bufferWi, int &bufferHi) const {
+void Model::GetBufferSize(const std::string &type, const std::string &camera, const std::string &transform, int &bufferWi, int &bufferHi, int stagger) const {
     if (type == DEFAULT) {
         bufferHi = this->BufferHt;
         bufferWi = this->BufferWi;
@@ -3635,7 +3640,7 @@ void Model::GetBufferSize(const std::string &type, const std::string &camera, co
         //if (type == PER_PREVIEW) {
         //default is to go ahead and build the full node buffer
         std::vector<NodeBaseClassPtr> newNodes;
-        InitRenderBufferNodes(type, camera, "None", newNodes, bufferWi, bufferHi);
+        InitRenderBufferNodes(type, camera, "None", newNodes, bufferWi, bufferHi, stagger);
     }
     AdjustForTransform(transform, bufferWi, bufferHi);
 }
@@ -3701,10 +3706,11 @@ void Model::DumpBuffer(std::vector<NodeBaseClassPtr> &newNodes,
     }
 }
 
-void Model::ApplyTransform(const std::string &type,
-                    std::vector<NodeBaseClassPtr> &newNodes,
-                    int &bufferWi, int &bufferHi) const {
-    //"Rotate CC 90", "Rotate CW 90", "Rotate 180", "Flip Vertical", "Flip Horizontal",
+void Model::ApplyTransform(const std::string& type,
+                           std::vector<NodeBaseClassPtr>& newNodes,
+                           int& bufferWi, int& bufferHi) const
+{
+    //"Rotate CC 90", "Rotate CW 90", "Rotate 180", "Flip Vertical", "Flip Horizontal", "Rotate CC 90 Flip Horizontal", "Rotate CW 90 Flip Horizontal"
     if (type == "None") {
         return;
     } else if (type == "Rotate 180") {
@@ -3731,24 +3737,46 @@ void Model::ApplyTransform(const std::string &type,
                 SetCoords(it2, bufferHi - it2.bufY - 1, it2.bufX);
             }
         }
-        int tmp = bufferHi;
-        bufferHi = bufferWi;
-        bufferWi = tmp;
+        std::swap(bufferWi, bufferHi);
     } else if (type == "Rotate CC 90") {
         for (int x = 0; x < newNodes.size(); x++) {
             for (auto& it2 : newNodes[x]->Coords) {
                 SetCoords(it2, it2.bufY, bufferWi - it2.bufX - 1);
             }
         }
-        int tmp = bufferHi;
-        bufferHi = bufferWi;
-        bufferWi = tmp;
+        std::swap(bufferWi, bufferHi);
+    } else if (type == "Rotate CC 90 Flip Horizontal") {
+        for (int x = 0; x < newNodes.size(); x++) {
+            for (auto& it2 : newNodes[x]->Coords) {
+                SetCoords(it2, it2.bufY, bufferWi - it2.bufX - 1);
+            }
+        }
+        std::swap(bufferWi, bufferHi);
+
+        for (size_t x = 0; x < newNodes.size(); x++) {
+            for (auto& it2 : newNodes[x]->Coords) {
+                SetCoords(it2, it2.bufX, bufferHi - it2.bufY - 1);
+            }
+        }
+    } else if (type == "Rotate CW 90 Flip Horizontal") {
+        for (size_t x = 0; x < newNodes.size(); x++) {
+            for (auto& it2 : newNodes[x]->Coords) {
+                SetCoords(it2, bufferHi - it2.bufY - 1, it2.bufX);
+            }
+        }
+        std::swap(bufferWi, bufferHi);
+
+        for (size_t x = 0; x < newNodes.size(); x++) {
+            for (auto& it2 : newNodes[x]->Coords) {
+                SetCoords(it2, it2.bufX, bufferHi - it2.bufY - 1);
+            }
+        }
     }
 }
 
 void Model::InitRenderBufferNodes(const std::string &type, const std::string &camera,
     const std::string &transform,
-    std::vector<NodeBaseClassPtr>& newNodes, int& bufferWi, int& bufferHt, bool deep) const
+    std::vector<NodeBaseClassPtr>& newNodes, int& bufferWi, int& bufferHt, int stagger, bool deep) const
 {
 
     static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
@@ -3917,7 +3945,7 @@ void Model::InitRenderBufferNodes(const std::string &type, const std::string &ca
             }
             for (Model *c : models) {
                 int bw, bh;
-                c->InitRenderBufferNodes("Per Preview No Offset", camera, transform, newNodes, bw, bh);
+                c->InitRenderBufferNodes("Per Preview No Offset", camera, transform, newNodes, bw, bh, stagger);
             }
         }
 
@@ -4158,7 +4186,7 @@ void Model::SetNodeCount(size_t NumStrings, size_t NodesPerString, const std::st
         }
         else if (StringType == "Superstring") {
             for (n = 0; n < NumStrings; n++) {
-                Nodes.push_back(NodeBaseClassPtr(new NodeClassSuperString(n, NodesPerString, superStringColours, GetNextName())));
+                Nodes.push_back(NodeBaseClassPtr(new NodeClassSuperString(n, NodesPerString, superStringColours, rgbwHandlingType, GetNextName())));
                 Nodes.back()->model = this;
             }
         } else if (StringType=="Single Color Blue") {
@@ -4268,7 +4296,7 @@ void Model::AddLayerSizeProperty(wxPropertyGridInterface* grid)
 {
     wxPGProperty* psn = grid->Append(new wxUIntProperty("Layers", "Layers", GetLayerSizeCount()));
     psn->SetAttribute("Min", 1);
-    psn->SetAttribute("Max", 50);
+    psn->SetAttribute("Max", 100);
     psn->SetEditor("SpinCtrl");
 
     if (GetLayerSizeCount() > 1) {
@@ -4795,6 +4823,10 @@ void Model::ExportAsCustomXModel() const
     if (state != "") {
         f.Write(state);
     }
+    wxString bufsubmodel = CreateBufferAsSubmodel();
+    if (bufsubmodel != "") {
+        f.Write(bufsubmodel);
+    }
     wxString submodel = SerialiseSubmodel();
     if (submodel != "") {
         f.Write(submodel);
@@ -5040,7 +5072,9 @@ void Model::DisplayModelOnWindow(ModelPreview* preview, xlGraphicsContext *ctx, 
     ModelScreenLocation& screenLocation = GetModelScreenLocation();
     screenLocation.PrepareToDraw(is_3d, allowSelected);
 
-    const std::string &cacheKey = is_3d ? MODEL_PREVIEW_CACHE_3D : MODEL_PREVIEW_CACHE_2D;
+    const std::string &cacheKey = allowSelected
+        ? (is_3d ? LAYOUT_PREVIEW_CACHE_3D : LAYOUT_PREVIEW_CACHE_2D)
+        : (is_3d ? MODEL_PREVIEW_CACHE_3D : MODEL_PREVIEW_CACHE_2D);
     if (uiObjectsInvalid) {
         deleteUIObjects();
     }
@@ -5246,20 +5280,45 @@ void Model::DisplayModelOnWindow(ModelPreview* preview, xlGraphicsContext *ctx, 
 
     if ((Selected || (Highlighted && is_3d)) && c != nullptr && allowSelected) {
         if (is_3d) {
-            GetModelScreenLocation().DrawHandles(transparentProgram, preview->GetCameraZoomForHandles(), preview->GetHandleScale(), Highlighted);
+            GetModelScreenLocation().DrawHandles(transparentProgram, preview->GetCameraZoomForHandles(), preview->GetHandleScale(), Highlighted, IsFromBase());
         } else {
-            GetModelScreenLocation().DrawHandles(transparentProgram, preview->GetCameraZoomForHandles(), preview->GetHandleScale());
+            GetModelScreenLocation().DrawHandles(transparentProgram, preview->GetCameraZoomForHandles(), preview->GetHandleScale(), IsFromBase());
         }
     }
+}
+
+float Model::GetPreviewDimScale(ModelPreview* preview, int& w, int& h)
+{
+    preview->GetSize(&w, &h);
+    float scaleX = float(w) * 0.95 / GetModelScreenLocation().RenderWi;
+    float scaleY = float(h) * 0.95 / GetModelScreenLocation().RenderHt;
+    float scale = scaleY < scaleX ? scaleY : scaleX;
+
+    return scale;
+}
+
+void Model::GetScreenLocation(float& sx, float& sy, const NodeBaseClass::CoordStruct& it2, int w, int h, float scale)
+{
+    sx = it2.screenX;
+    sy = it2.screenY;
+
+    if (!GetModelScreenLocation().IsCenterBased()) {
+        sx -= GetModelScreenLocation().RenderWi / 2.0;
+        sy *= GetModelScreenLocation().GetVScaleFactor();
+        if (GetModelScreenLocation().GetVScaleFactor() < 0) {
+            sy += GetModelScreenLocation().RenderHt / 2.0;
+        } else {
+            sy -= GetModelScreenLocation().RenderHt / 2.0;
+        }
+    }
+    sy = ((sy * scale) + (h / 2));
+    sx = (sx * scale) + (w / 2);
 }
 
 wxString Model::GetNodeNear(ModelPreview* preview, wxPoint pt, bool flip)
 {
     int w, h;
-    preview->GetSize(&w, &h);
-    float scaleX = float(w) * 0.95 / GetModelScreenLocation().RenderWi;
-    float scaleY = float(h) * 0.95 / GetModelScreenLocation().RenderHt;
-    float scale = scaleY < scaleX ? scaleY : scaleX;
+    float scale = GetPreviewDimScale(preview, w, h);
 
     float pointScale = scale;
     if (pointScale > 2.5) {
@@ -5281,21 +5340,8 @@ wxString Model::GetNodeNear(ModelPreview* preview, wxPoint pt, bool flip)
     for (const auto& it : Nodes) {
         auto c = it.get()->Coords;
         for (const auto& it2 : c) {
-            float sx = it2.screenX;
-            float sy = it2.screenY;
-
-            if (!GetModelScreenLocation().IsCenterBased()) {
-                sx -= GetModelScreenLocation().RenderWi / 2.0;
-                sy *= GetModelScreenLocation().GetVScaleFactor();
-                if (GetModelScreenLocation().GetVScaleFactor() < 0) {
-                    sy += GetModelScreenLocation().RenderHt / 2.0;
-                }
-                else {
-                    sy -= GetModelScreenLocation().RenderHt / 2.0;
-                }
-            }
-            sy = ((sy * scale) + (h / 2));
-            sx = (sx * scale) + (w / 2);
+            float sx, sy;
+            GetScreenLocation(sx, sy, it2, w, h, scale);
 
             if (sx >= (px - pointScale) && sx <= (px + pointScale) &&
                 sy >= (py - pointScale) && sy <= (py + pointScale)) {
@@ -5307,13 +5353,30 @@ wxString Model::GetNodeNear(ModelPreview* preview, wxPoint pt, bool flip)
     return "";
 }
 
+bool Model::GetScreenLocations(ModelPreview* preview, std::map<int, std::pair<float, float>>& coords)
+{
+    int w, h;
+    float scale = GetPreviewDimScale(preview, w, h);
+
+    int i = 1;
+    for (const auto& it : Nodes) {
+        auto c = it.get()->Coords;
+        if (c.size() != 1)
+            return false;
+        for (const auto& it2 : c) {
+            float sx, sy;
+            GetScreenLocation(sx, sy, it2, w, h, scale);
+            coords[i] = std::make_pair(sx, sy);
+        }
+        ++i;
+    }
+    return true;
+}
+
 std::vector<int> Model::GetNodesInBoundingBox(ModelPreview* preview, wxPoint start, wxPoint end)
 {
     int w, h;
-    preview->GetSize(&w, &h);
-    float scaleX = float(w) * 0.95 / GetModelScreenLocation().RenderWi;
-    float scaleY = float(h) * 0.95 / GetModelScreenLocation().RenderHt;
-    float scale = scaleY < scaleX ? scaleY : scaleX;
+    float scale = GetPreviewDimScale(preview, w, h);
 
     std::vector<int> nodes;
 
@@ -5338,24 +5401,12 @@ std::vector<int> Model::GetNodesInBoundingBox(ModelPreview* preview, wxPoint sta
     for (const auto& it : Nodes) {
         auto c = it.get()->Coords;
         for (const auto& it2 : c) {
-            float sx = it2.screenX;
-            float sy = it2.screenY;
-
-            if (!GetModelScreenLocation().IsCenterBased()) {
-                sx -= GetModelScreenLocation().RenderWi / 2.0;
-                sy *= GetModelScreenLocation().GetVScaleFactor();
-                if (GetModelScreenLocation().GetVScaleFactor() < 0) {
-                    sy += GetModelScreenLocation().RenderHt / 2.0;
-                }
-                else {
-                    sy -= GetModelScreenLocation().RenderHt / 2.0;
-                }
-            }
-            sy = ((sy * scale) + (h / 2));
-            sx = (sx * scale) + (w / 2);
+            float sx, sy;
+            GetScreenLocation(sx, sy, it2, w, h, scale);
 
             if (sx >= startpx && sx <= endpx &&
-                sy >= startpy && sy <= endpy) {
+                sy >= startpy && sy <= endpy)
+            {
                 nodes.push_back(i);
             }
         }
@@ -5394,7 +5445,7 @@ void Model::DisplayEffectOnWindow(ModelPreview* preview, double pointSize)
         }
 
         int w, h;
-        preview->GetSize(&w, &h);
+        float scale = GetPreviewDimScale(preview, w, h);
 
         size_t NodeCount = Nodes.size();
         bool created = false;
@@ -5402,9 +5453,6 @@ void Model::DisplayEffectOnWindow(ModelPreview* preview, double pointSize)
         int renderWi = GetModelScreenLocation().RenderWi;
         int renderHi = GetModelScreenLocation().RenderHt;
 
-        float scaleX = float(w) * 0.95 / GetModelScreenLocation().RenderWi;
-        float scaleY = float(h) * 0.95 / GetModelScreenLocation().RenderHt;
-        float scale = scaleY < scaleX ? scaleY : scaleX;
         float ml, mb;
         GetMinScreenXY(ml, mb);
         ml += GetModelScreenLocation().RenderWi / 2;
@@ -5502,7 +5550,8 @@ void Model::DisplayEffectOnWindow(ModelPreview* preview, double pointSize)
                         if (cache->vica->getCount() && (lastPixelStyle == PIXEL_STYLE::PIXEL_STYLE_SQUARE ||
                                                         lastPixelStyle == PIXEL_STYLE::PIXEL_STYLE_SMOOTH ||
                                                         Nodes[n]->model->_pixelStyle == PIXEL_STYLE::PIXEL_STYLE_SQUARE ||
-                                                        Nodes[n]->model->_pixelStyle == PIXEL_STYLE::PIXEL_STYLE_SMOOTH)) {
+                                                        Nodes[n]->model->_pixelStyle == PIXEL_STYLE::PIXEL_STYLE_SMOOTH))
+                        {
                             int count = cache->vica->getCount();
                             cache->program->addStep([=](xlGraphicsContext* ctx) {
                                 if (lastPixelStyle == PIXEL_STYLE::PIXEL_STYLE_SOLID_CIRCLE || lastPixelStyle == PIXEL_STYLE::PIXEL_STYLE_BLENDED_CIRCLE) {
@@ -5531,7 +5580,7 @@ void Model::DisplayEffectOnWindow(ModelPreview* preview, double pointSize)
                     }
                 }
             }
-            if (cache->vica->getCount() > startVertex) {
+            if (int(cache->vica->getCount()) > startVertex) {
                 int count = cache->vica->getCount();
                 cache->program->addStep([=](xlGraphicsContext* ctx) {
                     if (lastPixelStyle == PIXEL_STYLE::PIXEL_STYLE_SOLID_CIRCLE || lastPixelStyle == PIXEL_STYLE::PIXEL_STYLE_BLENDED_CIRCLE) {
@@ -5596,7 +5645,8 @@ void Model::DisplayEffectOnWindow(ModelPreview* preview, double pointSize)
 
 glm::vec3 Model::MoveHandle(ModelPreview* preview, int handle, bool ShiftKeyPressed, int mouseX,int mouseY) {
 
-    if (GetModelScreenLocation().IsLocked()) return GetModelScreenLocation().GetHandlePosition(handle);
+    if (GetModelScreenLocation().IsLocked() || IsFromBase())
+        return GetModelScreenLocation().GetHandlePosition(handle);
 
     int i = GetModelScreenLocation().MoveHandle(preview, handle, ShiftKeyPressed, mouseX, mouseY);
     GetModelScreenLocation().Write(ModelXml);
@@ -5638,14 +5688,16 @@ void Model::AddHandle(ModelPreview* preview, int mouseX, int mouseY) {
 
 void Model::InsertHandle(int after_handle, float zoom, int scale) {
 
-    if (GetModelScreenLocation().IsLocked()) return;
+    if (GetModelScreenLocation().IsLocked() || IsFromBase())
+        return;
 
     GetModelScreenLocation().InsertHandle(after_handle, zoom, scale);
 }
 
 void Model::DeleteHandle(int handle) {
 
-    if (GetModelScreenLocation().IsLocked()) return;
+    if (GetModelScreenLocation().IsLocked() || IsFromBase())
+        return;
 
     GetModelScreenLocation().DeleteHandle(handle);
 }
@@ -6520,6 +6572,35 @@ wxString Model::SerialiseSubmodel() const
     }
 
     return res;
+}
+
+wxString Model::CreateBufferAsSubmodel() const
+{
+    int buffW = GetDefaultBufferWi();
+    int buffH = GetDefaultBufferHt();
+    std::vector<std::vector<wxString>> nodearray(buffH, std::vector<wxString>(buffW, ""));
+    uint32_t nodeCount = GetNodeCount();
+    for (uint32_t i = 0; i < nodeCount; i++) {
+        int bufx = Nodes[i]->Coords[0].bufX;
+        int bufy = Nodes[i]->Coords[0].bufY;
+        nodearray[bufy][bufx] = wxString::Format("%d", i + 1);
+    }
+    wxXmlNode* child = new wxXmlNode(wxXML_ELEMENT_NODE, "subModel");
+    child->AddAttribute("name", "DefaultRenderBuffer");
+    child->AddAttribute("layout", "horizontal");
+    child->AddAttribute("type", "ranges");
+
+    for (int x = 0; x < nodearray.size(); x++) {
+        child->AddAttribute(wxString::Format("line%d", x), CompressNodes(wxJoin(nodearray[x], ',')));
+    }
+
+    wxXmlDocument new_doc;
+    new_doc.SetRoot(new wxXmlNode(*child));
+    wxStringOutputStream stream;
+    new_doc.Save(stream);
+    wxString s = stream.GetString();
+    s = s.SubString(s.Find("\n") + 1, s.Length()); // skip over xml format header
+    return s;
 }
 
 std::list<std::string> Model::CheckModelSettings()
@@ -7429,3 +7510,41 @@ void Model::ImportXlightsModel(std::string const& filename, xLightsFrame* xlight
         DisplayError("Failure loading model file: " + filename);
     }
 }
+
+std::string Model::GetAttributesAsJSON() const
+{
+    std::string json = "{";
+    bool first{true};
+    for (wxXmlAttribute* attrp = ModelXml->GetAttributes(); attrp; attrp = attrp->GetNext())
+    {
+        wxString value = attrp->GetValue();
+        if (!value.empty())
+        {
+            if(!first)
+            {
+                json += ",";
+            }
+            json += "\"" + attrp->GetName().ToStdString() + "\":\"" + JSONSafe(value.ToStdString()) + "\"";
+            first = false;
+        }
+    }
+    json += ",\"ControllerConnection\":{";
+    wxXmlNode* cc = GetControllerConnection();
+    bool first2{true};
+    for (wxXmlAttribute* attrp = cc->GetAttributes(); attrp; attrp = attrp->GetNext())
+    {
+        wxString value = attrp->GetValue();
+        if (!value.empty())
+        {
+            if(!first2)
+            {
+                json += ",";
+            }
+            json += "\"" + attrp->GetName().ToStdString() + "\":\"" + JSONSafe(value.ToStdString()) + "\"";
+            first2 = false;
+        }
+    }
+    json += "}}";
+    return json;
+}
+

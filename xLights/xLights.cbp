@@ -464,6 +464,8 @@
 		<Unit filename="AlignmentDialog.h" />
 		<Unit filename="AudioManager.cpp" />
 		<Unit filename="AudioManager.h" />
+		<Unit filename="AutoLabelDialog.cpp" />
+		<Unit filename="AutoLabelDialog.h" />
 		<Unit filename="BatchRenderDialog.cpp" />
 		<Unit filename="BatchRenderDialog.h" />
 		<Unit filename="BitmapCache.cpp" />
@@ -611,6 +613,8 @@
 		<Unit filename="MatrixFaceDownloadDialog.h" />
 		<Unit filename="MediaImportOptionsDialog.cpp" />
 		<Unit filename="MediaImportOptionsDialog.h" />
+		<Unit filename="MetronomeLabelDialog.cpp" />
+		<Unit filename="MetronomeLabelDialog.h" />
 		<Unit filename="ModelChainDialog.cpp" />
 		<Unit filename="ModelChainDialog.h" />
 		<Unit filename="ModelDimmingCurveDialog.cpp" />
@@ -816,6 +820,8 @@
 		<Unit filename="controllers/FPP.h" />
 		<Unit filename="controllers/FPPConnectDialog.cpp" />
 		<Unit filename="controllers/FPPConnectDialog.h" />
+		<Unit filename="controllers/FPPUploadProgressDialog.cpp" />
+		<Unit filename="controllers/FPPUploadProgressDialog.h" />
 		<Unit filename="controllers/Falcon.cpp" />
 		<Unit filename="controllers/Falcon.h" />
 		<Unit filename="controllers/HinksPix.cpp" />
@@ -863,6 +869,10 @@
 		<Unit filename="effects/DMXEffect.h" />
 		<Unit filename="effects/DMXPanel.cpp" />
 		<Unit filename="effects/DMXPanel.h" />
+		<Unit filename="effects/DuplicateEffect.cpp" />
+		<Unit filename="effects/DuplicateEffect.h" />
+		<Unit filename="effects/DuplicatePanel.cpp" />
+		<Unit filename="effects/DuplicatePanel.h" />
 		<Unit filename="effects/EffectManager.cpp" />
 		<Unit filename="effects/EffectManager.h" />
 		<Unit filename="effects/EffectPanelUtils.cpp" />
@@ -903,6 +913,10 @@
 		<Unit filename="effects/GlediatorEffect.h" />
 		<Unit filename="effects/GlediatorPanel.cpp" />
 		<Unit filename="effects/GlediatorPanel.h" />
+		<Unit filename="effects/GuitarEffect.cpp" />
+		<Unit filename="effects/GuitarEffect.h" />
+		<Unit filename="effects/GuitarPanel.cpp" />
+		<Unit filename="effects/GuitarPanel.h" />
 		<Unit filename="effects/KaleidoscopeEffect.cpp" />
 		<Unit filename="effects/KaleidoscopeEffect.h" />
 		<Unit filename="effects/KaleidoscopePanel.cpp" />
@@ -1071,15 +1085,10 @@
 		<Unit filename="effects/assist/xlGridCanvasPictures.h" />
 		<Unit filename="graphics/opengl/DrawGLUtils.cpp" />
 		<Unit filename="graphics/opengl/DrawGLUtils.h" />
-		<Unit filename="graphics/opengl/DrawGLUtils31.cpp" />
-		<Unit filename="graphics/opengl/Image.cpp" />
-		<Unit filename="graphics/opengl/Image.h" />
-		<Unit filename="graphics/opengl/Image_Loader.cpp" />
-		<Unit filename="graphics/opengl/Image_Loader.h" />
-		<Unit filename="graphics/opengl/XlightsDrawable.cpp" />
-		<Unit filename="graphics/opengl/XlightsDrawable.h" />
 		<Unit filename="graphics/opengl/xlGLCanvas.cpp" />
 		<Unit filename="graphics/opengl/xlGLCanvas.h" />
+		<Unit filename="graphics/opengl/xlOGL3GraphicsContext.cpp" />
+		<Unit filename="graphics/opengl/xlOGL3GraphicsContext.h" />
 		<Unit filename="graphics/xlFontInfo.cpp" />
 		<Unit filename="graphics/xlFontInfo.h" />
 		<Unit filename="graphics/xlGraphicsAccumulators.cpp" />
@@ -1111,6 +1120,8 @@
 		<Unit filename="models/CustomModel.h" />
 		<Unit filename="models/DMX/DmxColorAbility.cpp" />
 		<Unit filename="models/DMX/DmxColorAbility.h" />
+		<Unit filename="models/DMX/DmxColorAbilityCMY.cpp" />
+		<Unit filename="models/DMX/DmxColorAbilityCMY.h" />
 		<Unit filename="models/DMX/DmxColorAbilityRGB.cpp" />
 		<Unit filename="models/DMX/DmxColorAbilityRGB.h" />
 		<Unit filename="models/DMX/DmxColorAbilityWheel.cpp" />
@@ -1344,6 +1355,8 @@
 		<Unit filename="tmGridCell.h" />
 		<Unit filename="utils/Curl.cpp" />
 		<Unit filename="utils/Curl.h" />
+		<Unit filename="utils/CurlManager.cpp" />
+		<Unit filename="utils/CurlManager.h" />
 		<Unit filename="utils/ip_utils.cpp" />
 		<Unit filename="utils/ip_utils.h" />
 		<Unit filename="utils/string_utils.cpp" />
@@ -1389,6 +1402,7 @@
 		<Unit filename="wxsmith/AboutDialog.wxs" />
 		<Unit filename="wxsmith/AlignmentDialog.wxs" />
 		<Unit filename="wxsmith/AssistPanel.wxs" />
+		<Unit filename="wxsmith/AutoLabelDialog.wxs" />
 		<Unit filename="wxsmith/BackupSettingsPanel.wxs" />
 		<Unit filename="wxsmith/BarsPanel.wxs" />
 		<Unit filename="wxsmith/BatchRenderDialog.wxs" />
@@ -1419,6 +1433,7 @@
 		<Unit filename="wxsmith/CustomModelDialog.wxs" />
 		<Unit filename="wxsmith/CustomTimingDialog.wxs" />
 		<Unit filename="wxsmith/DMXPanel.wxs" />
+		<Unit filename="wxsmith/DuplicatePanel.wxs" />
 		<Unit filename="wxsmith/DuplicateDialog.wxs" />
 		<Unit filename="wxsmith/EffectAssist.wxs" />
 		<Unit filename="wxsmith/EffectIconPanel.wxs" />
@@ -1429,6 +1444,7 @@
 		<Unit filename="wxsmith/EmailDialog.wxs" />
 		<Unit filename="wxsmith/ExportModelSelect.wxs" />
 		<Unit filename="wxsmith/FPPConnectDialog.wxs" />
+		<Unit filename="wxsmith/FPPUploadProgressDialog.wxs" />
 		<Unit filename="wxsmith/FacesPanel.wxs" />
 		<Unit filename="wxsmith/FanPanel.wxs" />
 		<Unit filename="wxsmith/FillPanel.wxs" />
@@ -1440,6 +1456,7 @@
 		<Unit filename="wxsmith/GenerateCustomModelDialog.wxs" />
 		<Unit filename="wxsmith/GenerateLyricsDialog.wxs" />
 		<Unit filename="wxsmith/GlediatorPanel.wxs" />
+		<Unit filename="wxsmith/GuitarPanel.wxs" />
 		<Unit filename="wxsmith/HinksPixExportDialog.wxs" />
 		<Unit filename="wxsmith/HousePreviewPanel.wxs" />
 		<Unit filename="wxsmith/IPEntryDialog.wxs" />
@@ -1463,6 +1480,7 @@
 		<Unit filename="wxsmith/MatrixFaceDownloadDialog.wxs" />
 		<Unit filename="wxsmith/MediaImportOptionsDialog.wxs" />
 		<Unit filename="wxsmith/MeteorsPanel.wxs" />
+		<Unit filename="wxsmith/MetronomeLabelDialog.wxs" />
 		<Unit filename="wxsmith/ModelChainDialog.wxs" />
 		<Unit filename="wxsmith/ModelDimmingCurveDialog.wxs" />
 		<Unit filename="wxsmith/ModelFaceDialog.wxs" />
@@ -1693,6 +1711,7 @@
 					<wxPanel wxs="wxsmith/ColorWashPanel.wxs" src="effects/ColorWashPanel.cpp" hdr="effects/ColorWashPanel.h" fwddecl="1" i18n="1" name="CirclesPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/CurtainPanel.wxs" src="effects/CurtainPanel.cpp" hdr="effects/CurtainPanel.h" fwddecl="1" i18n="1" name="CurtainPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/DMXPanel.wxs" src="effects/DMXPanel.cpp" hdr="effects/DMXPanel.h" fwddecl="1" i18n="1" name="DMXPanel" language="CPP" />
+					<wxPanel wxs="wxsmith/DuplicatePanel.wxs" src="effects/DuplicatePanel.cpp" hdr="effects/DuplicatePanel.h" fwddecl="1" i18n="1" name="DuplicatePanel" language="CPP" />
 					<wxPanel wxs="wxsmith/FacesPanel.wxs" src="effects/FacesPanel.cpp" hdr="effects/FacesPanel.h" fwddecl="1" i18n="1" name="FacesPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/FanPanel.wxs" src="effects/FanPanel.cpp" hdr="effects/FanPanel.h" fwddecl="1" i18n="1" name="FanPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/FillPanel.wxs" src="effects/FillPanel.cpp" hdr="effects/FillPanel.h" fwddecl="1" i18n="1" name="FillPanel" language="CPP" />
@@ -1702,6 +1721,7 @@
 					<wxPanel wxs="wxsmith/GalaxyPanel.wxs" src="effects/GalaxyPanel.cpp" hdr="effects/GalaxyPanel.h" fwddecl="1" i18n="1" name="GalaxyPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/GarlandsPanel.wxs" src="effects/GarlandsPanel.cpp" hdr="effects/GarlandsPanel.h" fwddecl="1" i18n="1" name="GarlandsPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/GlediatorPanel.wxs" src="effects/GlediatorPanel.cpp" hdr="effects/GlediatorPanel.h" fwddecl="1" i18n="1" name="GlediatorPanel" language="CPP" />
+					<wxPanel wxs="wxsmith/GuitarPanel.wxs" src="effects/GuitarPanel.cpp" hdr="effects/GuitarPanel.h" fwddecl="1" i18n="1" name="GuitarPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/KaleidoscopePanel.wxs" src="effects/KaleidoscopePanel.cpp" hdr="effects/KaleidoscopePanel.h" fwddecl="1" i18n="1" name="KaleidoscopePanel" language="CPP" />
 					<wxPanel wxs="wxsmith/LifePanel.wxs" src="effects/LifePanel.cpp" hdr="effects/LifePanel.h" fwddecl="1" i18n="1" name="LifePanel" language="CPP" />
 					<wxPanel wxs="wxsmith/LightningPanel.wxs" src="effects/LightningPanel.cpp" hdr="effects/LightningPanel.h" fwddecl="1" i18n="1" name="LightningPanel" language="CPP" />
@@ -1768,6 +1788,9 @@
 					<wxDialog wxs="wxsmith/RestoreBackupDialog.wxs" src="RestoreBackupDialog.cpp" hdr="RestoreBackupDialog.h" fwddecl="0" i18n="1" name="RestoreBackupDialog" language="CPP" />
 					<wxDialog wxs="wxsmith/BulkEditComboDialog.wxs" src="BulkEditComboDialog.cpp" hdr="BulkEditComboDialog.h" fwddecl="0" i18n="1" name="BulkEditComboDialog" language="CPP" />
 					<wxDialog wxs="wxsmith/DuplicateDialog.wxs" src="DuplicateDialog.cpp" hdr="DuplicateDialog.h" fwddecl="0" i18n="1" name="DuplicateDialog" language="CPP" />
+					<wxDialog wxs="wxsmith/MetronomeLabelDialog.wxs" src="MetronomeLabelDialog.cpp" hdr="MetronomeLabelDialog.h" fwddecl="0" i18n="1" name="MetronomeLabelDialog" language="CPP" />
+					<wxDialog wxs="wxsmith/FPPUploadProgressDialog.wxs" src="controllers/FPPUploadProgressDialog.cpp" hdr="controllers/FPPUploadProgressDialog.h" fwddecl="0" i18n="1" name="FPPUploadProgressDialog" language="CPP" />
+					<wxDialog wxs="wxsmith/AutoLabelDialog.wxs" src="AutoLabelDialog.cpp" hdr="AutoLabelDialog.h" fwddecl="0" i18n="1" name="AutoLabelDialog" language="CPP" />
 				</resources>
 			</wxsmith>
 		</Extensions>

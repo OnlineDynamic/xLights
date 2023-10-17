@@ -10,6 +10,9 @@
  * License: https://github.com/smeighan/xLights/blob/master/License.txt
  **************************************************************/
 
+// https://tsp.esta.org/tsp/documents/docs/E1-31-2016.pdf
+// https://tsp.esta.org/tsp/documents/docs/ANSI_E1-31-2018.pdf
+
 #include "IPOutput.h"
 
 #include <wx/socket.h>
@@ -46,11 +49,15 @@ class E131Output : public IPOutput
 public:
 
     #pragma region Constructors and Destructors
-    E131Output(wxXmlNode* node);
+    E131Output(wxXmlNode* node, bool isActive);
     E131Output();
-    E131Output(E131Output* output);
+    E131Output(const E131Output& from);
     virtual ~E131Output() override;
     virtual wxXmlNode* Save() override;
+    virtual Output* Copy() override
+    {
+        return new E131Output(*this);
+    }
     #pragma endregion
 
     #pragma region Static Functions
@@ -95,4 +102,14 @@ public:
     virtual void SetManyChannels(int32_t channel, unsigned char* data, size_t size) override;
     virtual void AllOff() override;
     #pragma endregion
+    
+    
+    #pragma region UI
+    #ifndef EXCLUDENETWORKUI
+    virtual void UpdateProperties(wxPropertyGrid* propertyGrid, Controller* c, ModelManager* modelManager, std::list<wxPGProperty*>& expandProperties) override;
+    virtual void AddProperties(wxPropertyGrid* propertyGrid, wxPGProperty *before, Controller* c, bool allSameSize, std::list<wxPGProperty*>& expandProperties) override;
+    virtual bool HandlePropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager, Controller* c) override;
+    virtual void RemoveProperties(wxPropertyGrid* propertyGrid) override;
+    #endif
+    #pragma endregion UI
 };

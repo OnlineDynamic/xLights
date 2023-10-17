@@ -19,23 +19,26 @@
 #include "ControllerUploadData.h"
 #include "../UtilClasses.h"
 
+#include <curl/curl.h>
+
 class HinksPix;
 class wxJSONValue;
 
 struct HinksPixOutput {
-    HinksPixOutput(int output_) :
+    HinksPixOutput(int output_ ,int defaultBrightness_) :
         output(output_),
         universe(1),
         startChannel(1),
-        pixels(50),
+        pixels(0),
         direction(0),
         protocol(0),
         nullPixel(0),
         colorOrder(0),
-        brightness(100),
+        brightness(defaultBrightness_),
         gamma(1),
-        controlerStartChannel(1),
-        controlerEndChannel(150){};
+        controllerStartChannel(1),
+        controllerEndChannel(0),
+        used(false){};
     const int output;
     int universe;
     int startChannel;
@@ -46,9 +49,10 @@ struct HinksPixOutput {
     int colorOrder;
     int brightness;
     int gamma;
+    bool used;
 
-    int getControllerStartChannel() const { return controlerStartChannel; }
-    int getControllerEndChannel() const { return controlerEndChannel; }
+    int getControllerStartChannel() const { return controllerStartChannel; }
+    int getControllerEndChannel() const { return controllerEndChannel; }
     void setControllerChannels(const int startChan);
 
     void Dump() const;
@@ -57,8 +61,8 @@ struct HinksPixOutput {
     wxString BuildCommandEasyLights() const;
 
 private:
-    int controlerStartChannel;
-    int controlerEndChannel;
+    int controllerStartChannel;
+    int controllerEndChannel;
 };
 
 struct HinksPixSerial {
@@ -126,6 +130,11 @@ struct HinksPixInputUniverse {
 
 class HinksPix : public BaseController
 {
+    static constexpr int UN_PER = 6;
+    static constexpr int OUT_SIZE = 16;
+    static constexpr int EXP_PORTS = 5;
+    static constexpr int REC_SIZE = 4;
+
     enum class EXPType {
         Not_Present,
         Local_SPI,
@@ -133,18 +142,16 @@ class HinksPix : public BaseController
         Local_AC
     };
 
-    static constexpr int UN_PER = 6;
-
 #pragma region Member Variables
-    EXPType _EXP_Outputs[3];
+    EXPType _EXP_Outputs[EXP_PORTS];
     std::string _controllerType;
-    int _numberOfOutputs;
+    CURL* _curl { nullptr };
     int _numberOfUniverses;
     int _MCPU_Version;
 
     std::vector<HinksPixOutput> _pixelOutputs;
     std::unique_ptr<HinksPixSerial> _serialOutput;
-    std::vector<HinksSmartOutput> _smartOutputs[3][4];
+    std::vector<HinksSmartOutput> _smartOutputs[EXP_PORTS][REC_SIZE];
 #pragma endregion
 
 #pragma region Encode and Decode
@@ -157,9 +164,9 @@ class HinksPix : public BaseController
 #pragma endregion
 
 #pragma region Private Functions
-    bool InitControllerOutputData();
+    bool InitControllerOutputData(bool fullControl, int defaultBrightness);
     void InitExpansionBoardData(int expansion, int startport, int length);
-    std::unique_ptr<HinksPixSerial> InitSerialData();
+    std::unique_ptr<HinksPixSerial> InitSerialData(bool fullControl);
 
     bool UploadInputUniverses(Controller* controller, std::vector<HinksPixInputUniverse> const& inputUniverses) const;
     
@@ -173,23 +180,24 @@ class HinksPix : public BaseController
     void UpdatePortData(HinksPixOutput& pd, UDControllerPort* stringData, int32_t hinkstartChan) const;
     void UpdateSerialData(HinksPixSerial& pd, UDControllerPort* serialData, int const mode, std::vector<HinksPixInputUniverse>& inputUniverses, int32_t& hinkstartChan, int& index, bool individualUniverse) const;
     void UploadPixelOutputs(bool& worked) const;
-    void UpdateUniverseControlerChannels(UDControllerPort* stringData, std::vector<HinksPixInputUniverse>& inputUniverses, int32_t& hinkstartChan, int& index, bool individualUniverse);
+    void UpdateUniverseControllerChannels(UDControllerPort* stringData, std::vector<HinksPixInputUniverse>& inputUniverses, int32_t& hinkstartChan, int& index, bool individualUniverse);
     void UploadExpansionBoardData(int expansion, int startport, int length, bool& worked) const;
-    void UploadSmartRecievers(bool& worked) const;
-    void UploadSmartRecieverData(int expan, int bank, std::vector<HinksSmartOutput> const& receivers, bool& worked) const;
-    void CalculateSmartRecievers(UDControllerPort* stringData);
+    void UploadSmartReceivers(bool& worked) const;
+    void UploadSmartReceiverData(int expan, int bank, std::vector<HinksSmartOutput> const& receivers, bool& worked) const;
+    void CalculateSmartReceivers(UDControllerPort* stringData);
     void SendRebootController(bool& worked) const;
     std::string GetJSONControllerData(std::string const& url, std::string const& data) const;
     bool GetControllerDataJSON(const std::string& url, wxJSONValue& val, std::string const& data) const;
-    void PostToControllerNoResponce(std::string const& url, std::string const& data) const;
+    void PostToControllerNoResponse(std::string const& url, std::string const& data) const;
+    bool CheckPixelOutputs(std::string & message);
+    bool CheckSmartReceivers(std::string & message);
+
     static const std::string GetJSONPostURL() { return "/Xlights_PostData.cgi"; };
     static const std::string GetJSONInfoURL() { return "/XLights_BoardInfo.cgi"; };
     static const std::string GetJSONPortURL() { return "/Xlights_Board_Port_Config.cgi"; };
     static const std::string GetJSONModeURL() { return "/Xlights_Data_Mode.cgi"; };
     static const std::string GetE131URL() { return"/GetE131Data.cgi"; };
     static const std::string GetInfoURL() { return"/GetInfo.cgi"; };
-    const int GetNumberOfOutputs() { return _numberOfOutputs; }
-    const int GetNumberOfSerial() { return 1; }
 
 #pragma endregion
 

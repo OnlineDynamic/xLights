@@ -43,11 +43,15 @@ class KinetOutput : public IPOutput
 public:
 
     #pragma region Constructors and Destructors
-    KinetOutput(wxXmlNode* node);
+    KinetOutput(wxXmlNode* node, bool isActive);
     KinetOutput();
-    KinetOutput(KinetOutput* output);
+    KinetOutput(const KinetOutput& from);
     virtual ~KinetOutput() override;
     virtual wxXmlNode* Save() override;
+    virtual Output* Copy() override
+    {
+        return new KinetOutput(*this);
+    }
     #pragma endregion 
 
     #pragma region Static Functions
@@ -82,5 +86,13 @@ public:
     virtual void SetOneChannel(int32_t channel, unsigned char data) override;
     virtual void SetManyChannels(int32_t channel, unsigned char* data, size_t size) override;
     virtual void AllOff() override;
-    #pragma endregion 
+    #pragma endregion
+    
+    #pragma region UI
+    #ifndef EXCLUDENETWORKUI
+    virtual void UpdateProperties(wxPropertyGrid* propertyGrid, Controller* c, ModelManager* modelManager, std::list<wxPGProperty*>& expandProperties) override;
+    virtual void AddProperties(wxPropertyGrid* propertyGrid, wxPGProperty *before, Controller* c, bool allSameSize, std::list<wxPGProperty*>& expandProperties) override;
+    virtual void RemoveProperties(wxPropertyGrid* propertyGrid) override;
+    #endif
+    #pragma endregion UI
 };

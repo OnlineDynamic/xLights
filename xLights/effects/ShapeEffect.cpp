@@ -10,6 +10,7 @@
 
 #include "ShapeEffect.h"
 #include "ShapePanel.h"
+#include "TextEffect.h" // FontMapLock
 
 #include "../sequencer/Effect.h"
 #include "../RenderBuffer.h"
@@ -22,6 +23,8 @@
 #include "../xLightsMain.h" 
 
 #include "nanosvg/src/nanosvg.h"
+
+#include <regex>
 
 #include "../../include/shape-16.xpm"
 #include "../../include/shape-24.xpm"
@@ -166,6 +169,8 @@ void ShapeEffect::SetDefaultParameters() {
     sp->BitmapButton_Shape_ThicknessVC->SetActive(false);
     sp->BitmapButton_Shape_CentreXVC->SetActive(false);
     sp->BitmapButton_Shape_CentreYVC->SetActive(false);
+    sp->BitmapButton_Shapes_Velocity->SetActive(false);
+    sp->BitmapButton_Shapes_Direction->SetActive(false);
     sp->BitmapButton_Shape_LifetimeVC->SetActive(false);
     sp->BitmapButton_Shape_GrowthVC->SetActive(false);
     sp->BitmapButton_Shape_CountVC->SetActive(false);
@@ -184,6 +189,8 @@ void ShapeEffect::SetDefaultParameters() {
     SetSliderValue(sp->Slider_Shape_Lifetime, 5);
     SetSliderValue(sp->Slider_Shape_Sensitivity, 50);
     SetSliderValue(sp->Slider_Shape_Rotation, 0);
+    SetSliderValue(sp->Slider_Shapes_Velocity, 0);
+    SetSliderValue(sp->Slider_Shapes_Direction, 90);
 
     SetCheckBoxValue(sp->CheckBox_Shape_RandomLocation, true);
     SetCheckBoxValue(sp->CheckBox_Shape_FadeAway, true);
@@ -191,6 +198,9 @@ void ShapeEffect::SetDefaultParameters() {
     SetCheckBoxValue(sp->CheckBox_Shape_FireTiming, false);
     SetCheckBoxValue(sp->CheckBox_Shape_RandomInitial, true);
     SetCheckBoxValue(sp->CheckBox_Shape_HoldColour, true);
+    SetCheckBoxValue(sp->CheckBox_FilterLabelReg, false);
+
+    sp->TextCtrl_Shape_FilterLabel->SetValue("");
 
     sp->FilePickerCtrl_SVG->SetFileName(wxFileName(""));
 }
@@ -280,9 +290,52 @@ public:
     NSVGimage* _svgImage = nullptr;
     std::string _svgFilename;
     float _svgScaleBase = 1.0f;
+    std::string _filterLabel;
+    std::regex _filterRegex;
+    bool _useRegex;
+
+    void SetFilter(const std::string& filterLabel, bool useRegex)
+    {
+        _filterLabel = filterLabel;
+        _useRegex = useRegex;
+        if (useRegex) {
+            try {
+                _filterRegex = std::regex(filterLabel, std::regex_constants::extended);
+            } catch(std::exception&) {
+                _useRegex = false;
+            }
+        }
+    }
+
+    bool IsLabelAMatch(const std::string& label)
+    {
+        if (_filterLabel == "")
+            return true;
+
+        if (_useRegex)
+            return std::regex_search(label, _filterRegex);
+
+        // tokenise the label and then check if any match the filter
+        const std::string tokens = ": ;,";
+        char n[4096] = { 0 };
+        strncpy(n, label.c_str(), sizeof(n) - 1);
+        const char* token = strtok(n, tokens.c_str());
+        while (token != nullptr) {
+            if (_filterLabel == token)
+                return true;
+            token = strtok(nullptr, tokens.c_str());
+        }
+
+        return false;
+    }
 
     void InitialiseSVG(const std::string filename)
     {
+        if (_svgImage != nullptr) {
+            nsvgDelete(_svgImage);
+            _svgImage = nullptr;
+        }
+
         _svgFilename = filename;
         _svgImage = nsvgParseFromFile(_svgFilename.c_str(), "px", 96);
         if (_svgImage != nullptr) {
@@ -410,6 +463,8 @@ void ShapeEffect::Render(Effect *effect, const SettingsMap &SettingsMap, RenderB
     int direction = GetValueCurveInt("Shapes_Direction", 90, SettingsMap, oset, SHAPE_DIRECTION_MIN, SHAPE_DIRECTION_MAX, buffer.GetStartTimeMS(), buffer.GetEndTimeMS());
     int velocity = GetValueCurveInt("Shapes_Velocity", 0, SettingsMap, oset, SHAPE_VELOCITY_MIN, SHAPE_VELOCITY_MAX, buffer.GetStartTimeMS(), buffer.GetEndTimeMS());
     bool randomMovement = SettingsMap.GetBool("CHECKBOX_Shapes_RandomMovement", false);
+    bool useRegex = SettingsMap.GetBool("CHECKBOX_Shape_FilterReg", false);
+    std::string filterLabel = SettingsMap.Get("TEXTCTRL_Shape_FilterLabel", "");
 
     int rotation = GetValueCurveInt("Shape_Rotation", 0, SettingsMap, oset, SHAPE_ROTATION_MIN, SHAPE_ROTATION_MAX, buffer.GetStartTimeMS(), buffer.GetEndTimeMS());
 
@@ -449,22 +504,12 @@ void ShapeEffect::Render(Effect *effect, const SettingsMap &SettingsMap, RenderB
     if (buffer.needToInit) {
         buffer.needToInit = false;
 
+        cache->SetFilter(filterLabel, useRegex);
+
         _sinceLastTriggered = 0;
 
         if (Object_To_Draw == RENDER_SHAPE_EMOJI) {
-            wxFont ff(font);
-            ff.SetNativeFontInfoUserDesc(font);
-
-            _font = wxFontInfo(wxSize(0, 12));
-            wxString face = ff.GetFaceName();
-            if (face == WIN_NATIVE_EMOJI_FONT || face == OSX_NATIVE_EMOJI_FONT || face == LINUX_NATIVE_EMOJI_FONT) {
-                _font.FaceName(NATIVE_EMOJI_FONT);
-            } else {
-                _font.FaceName(face);
-            }
-            _font.Light();
-            _font.AntiAliased(false);
-            _font.Encoding(ff.GetEncoding());
+            _font = TextDrawingContext::GetShapeFont(font);
         } else if (Object_To_Draw == RENDER_SHAPE_SVG) {
             cache->InitialiseSVG(svgFilename);
         }
@@ -529,8 +574,8 @@ void ShapeEffect::Render(Effect *effect, const SettingsMap &SettingsMap, RenderB
                 EffectLayer* el = t->GetEffectLayer(0);
                 for (int j = 0; j < el->GetEffectCount(); j++)
                 {
-                    if (buffer.curPeriod == el->GetEffect(j)->GetStartTimeMS() / buffer.frameTimeInMs ||
-                        buffer.curPeriod == el->GetEffect(j)->GetEndTimeMS() / buffer.frameTimeInMs)
+                    Effect* ef = el->GetEffect(j);
+                    if (buffer.curPeriod == ef->GetStartTimeMS() / buffer.frameTimeInMs && cache->IsLabelAMatch(ef->GetEffectName()))
                     {
                         wxPoint pt;
                         if (randomLocation)
@@ -1196,42 +1241,34 @@ void ShapeEffect::Drawemoji(RenderBuffer& buffer, int xc, int yc, double radius,
     context->SetOverlayMode(false);
 }
 
-inline wxPoint2DDouble ScaleMovePoint(const wxPoint2DDouble pt, const wxPoint2DDouble imageCentre, const wxPoint2DDouble centre, float factor, float scaleTo)
+static inline wxPoint2DDouble ScaleMovePoint(const wxPoint2DDouble pt, const wxPoint2DDouble imageCentre, const wxPoint2DDouble centre, float factor, float scaleTo)
 {
     return centre + ((pt - imageCentre) * factor * scaleTo * 10);
 }
 
-inline uint8_t GetSVGRed(uint32_t colour)
+static inline uint8_t GetSVGRed(uint32_t colour)
 {
     return (colour);
 }
 
-inline uint8_t GetSVGGreen(uint32_t colour)
+static inline uint8_t GetSVGGreen(uint32_t colour)
 {
     return (colour >> 8);
 }
 
-inline uint8_t GetSVGBlue(uint32_t colour)
+static inline uint8_t GetSVGBlue(uint32_t colour)
 {
     return (colour >> 16);
 }
 
-inline uint8_t GetSVGAlpha(uint32_t colour)
+static inline uint8_t GetSVGAlpha(uint32_t colour)
 {
     return (colour >> 24);
 }
 
-inline uint32_t GetSVGExAlpha(uint32_t colour)
+static inline uint32_t GetSVGExAlpha(uint32_t colour)
 {
     return (colour & 0xFFFFFF);
-}
-
-inline uint32_t GetSVGColour(xlColor c)
-{
-    return (((uint32_t)c.alpha) << 24) +
-           (((uint32_t)c.blue) << 16) +
-           (((uint32_t)c.green) << 8) +
-           c.red;
 }
 
 void ShapeEffect::DrawSVG(ShapeRenderCache* cache, RenderBuffer& buffer, int xc, int yc, double radius, xlColor color, int thickness) const

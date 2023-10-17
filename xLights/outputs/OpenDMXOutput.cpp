@@ -14,17 +14,18 @@
 #include <wx/xml/xml.h>
 
 #pragma region Constructors and Destructors
-OpenDMXOutput::OpenDMXOutput(SerialOutput* output) : SerialOutput(output) {
-    _baudRate = GetDefaultBaudRate();
-    memset(_data, 0x00, sizeof(_data));
-}
-
 OpenDMXOutput::OpenDMXOutput(wxXmlNode* node) : SerialOutput(node) {
     _baudRate = GetDefaultBaudRate();
     memset(_data, 0x00, sizeof(_data));
 }
 
 OpenDMXOutput::OpenDMXOutput() : SerialOutput() {
+    _baudRate = GetDefaultBaudRate();
+    memset(_data, 0x00, sizeof(_data));
+}
+OpenDMXOutput::OpenDMXOutput(const OpenDMXOutput& from) :
+    SerialOutput(from)
+{
     _baudRate = GetDefaultBaudRate();
     memset(_data, 0x00, sizeof(_data));
 }
@@ -35,10 +36,9 @@ bool OpenDMXOutput::Open() {
 
     if (!_enabled) return true;
 
-    _ok = SerialOutput::Open();
-
-    _data[0] = 0;   // dmx start code
     _serialConfig[2] = '2'; // use 2 stop bits so padding chars are not required
+    _ok = SerialOutput::Open();
+    _data[0] = 0;   // dmx start code
 
     return _ok;
 }

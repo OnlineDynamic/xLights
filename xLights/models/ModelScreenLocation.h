@@ -27,6 +27,9 @@
 #define END_HANDLE             2
 #define SHEAR_HANDLE           3
 
+#define FROM_BASE_HANDLES_COLOUR xlPURPLETRANSLUCENT
+#define LOCKED_HANDLES_COLOUR xlREDTRANSLUCENT
+
 // Lower 20 bits reserved to store handle positions and these
 // constants are modifiers to indicate special handles
 #define HANDLE_MASK    0x00FFFFF
@@ -62,7 +65,16 @@ protected:
     float GetAxisHeadLength(float zoom, int scale) const;
     float GetAxisRadius(float zoom, int scale) const;
     float GetRectHandleWidth(float zoom, int scale) const;
+
     public:
+
+    enum class MSLPLANE {
+        XY_PLANE,
+        XZ_PLANE,
+        YZ_PLANE,
+        NO_PLANE,
+        GROUND = XZ_PLANE
+    };
 
     enum class MSLAXIS {
         X_AXIS,
@@ -105,8 +117,8 @@ protected:
     virtual wxCursor CheckIfOverHandles3D(glm::vec3& ray_origin, glm::vec3& ray_direction, int &handle, float zoom, int scale) const;
 
     //new drawing code
-    virtual bool DrawHandles(xlGraphicsProgram *program, float zoom, int scale) const { return false; };
-    virtual bool DrawHandles(xlGraphicsProgram *program, float zoom, int scale, bool drawBounding) const { return false; };
+    virtual bool DrawHandles(xlGraphicsProgram *program, float zoom, int scale, bool fromBase) const { return false; };
+    virtual bool DrawHandles(xlGraphicsProgram *program, float zoom, int scale, bool drawBounding, bool fromBase) const { return false; };
     void DrawAxisTool(glm::vec3& pos, xlGraphicsProgram *program, float zoom, int scale) const;
 
     
@@ -245,6 +257,10 @@ protected:
     void SetSupportsZScaling(bool b) {
         supportsZScaling = b;
     }
+    MSLPLANE GetPreferredSelectionPlane() { return preferred_selection_plane; }
+    void SetPreferredSelectionPlane( MSLPLANE plane ) { preferred_selection_plane = plane; }
+    void SetActivePlane( MSLPLANE plane ) { active_plane = plane; }
+    void FindPlaneIntersection( int x, int y, ModelPreview* preview );
     void CreateWithDepth(bool b) {
         createWithDepth = b;
     }
@@ -254,6 +270,19 @@ protected:
     glm::vec3 GetWorldPosition() const { return glm::vec3(worldPos_x, worldPos_y, worldPos_z); }
     void SetWorldPosition(const glm::vec3& worldPos) { worldPos_x = worldPos.x; worldPos_y = worldPos.y; worldPos_z = worldPos.z; }
     glm::vec3 GetRotation() const { return glm::vec3(rotatex, rotatey, rotatez); }
+    void SetRotation(const glm::vec3& rotate)
+    {
+        rotatex = rotate.x;
+        rotatey = rotate.y;
+        rotatez = rotate.z;
+
+        glm::mat4 Identity(glm::mat4(1.0f));
+        glm::mat4 rx = glm::rotate(Identity, glm::radians(rotatex), glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::mat4 ry = glm::rotate(Identity, glm::radians(rotatey), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 rz = glm::rotate(Identity, glm::radians(rotatez), glm::vec3(0.0f, 0.0f, 1.0f));
+        rotate_quat = glm::quat_cast(rz * ry * rx);
+        rotation_init = false;
+    }
     glm::quat GetRotationQuat() const { return rotate_quat; }
     glm::vec3 GetScaleMatrix() const { return glm::vec3(scalex, scaley, scalez); }
     void SetScaleMatrix(const glm::vec3& scale) const {
@@ -269,6 +298,7 @@ protected:
     ModelScreenLocation(int points);
     virtual ~ModelScreenLocation() {};
     virtual wxCursor CheckIfOverAxisHandles3D(glm::vec3& ray_origin, glm::vec3& ray_direction, int &handle, float zoom, int scale) const;
+    MSLPLANE GetBestIntersection( MSLPLANE prefer, bool& rotate, ModelPreview* preview );
 
     mutable float worldPos_x = 0.0f;
     mutable float worldPos_y = 0.0f;
@@ -312,4 +342,6 @@ protected:
     bool _startOnXAxis = false;
     bool rotation_init = true;
     bool mouse_down = false;
+    MSLPLANE preferred_selection_plane = MSLPLANE::XY_PLANE;
+    MSLPLANE active_plane = MSLPLANE::NO_PLANE;
 };

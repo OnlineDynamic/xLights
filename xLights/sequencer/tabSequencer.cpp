@@ -504,13 +504,19 @@ void xLightsFrame::CheckForValidModels()
 
     logger_base.debug("CheckForValidModels: Remove models that already exist.");
 
-    size_t missingModelCount = 0;
+    std::vector<std::string> missingModels;
 
     if ((!_renderMode && !_checkSequenceMode) || _promptBatchRenderIssues) {
         for (int x = _sequenceElements.GetElementCount() - 1; x >= 0; x--) {
-            if (ElementType::ELEMENT_TYPE_MODEL == _sequenceElements.GetElement(x)->GetType()) {
-                std::string name = _sequenceElements.GetElement(x)->GetModelName();
-                if (AllModels[name] == nullptr) missingModelCount++;
+            Element* element = _sequenceElements.GetElement(x);
+            if (element && ElementType::ELEMENT_TYPE_MODEL == element->GetType()) {
+                std::string name = element->GetModelName();
+                
+                if (AllModels[name] == nullptr) {
+                    int numfx = element->GetEffectCount(); //useful info for user
+                    std::string desc = name + "(" + std::to_string(numfx) + ")";
+                    missingModels.push_back(desc); //show which ones have effects (tells user how important)
+                }
                 //remove the current models from the list so we don't end up with the same model represented twice
                 Remove(AllNames, name);
                 Remove(ModelNames, name);
@@ -519,12 +525,18 @@ void xLightsFrame::CheckForValidModels()
     }
 
     bool mapall = false;
-    if (missingModelCount > 7) {
+    if (missingModels.size() > 7) {
         std::string seqName = "No Name";
         if (CurrentSeqXmlFile != nullptr) {
             seqName = CurrentSeqXmlFile->GetFullName();
         }
-        auto msg = wxString::Format("Sequence you are opening '%s' contains %d models which are not in your layout. We suggest you import this sequence instead. Do you want to continue to open it?", seqName, (int)missingModelCount);
+        std::string missings;
+        for (const auto &name: missingModels) {
+            missings += name + ", ";
+        }
+        missings.pop_back();
+        missings.pop_back(); //drop last delimiter
+        auto msg = wxString::Format("The sequence you are opening '%s' contains %d models which are not in your layout (%s). We suggest you import this sequence instead. Do you want to continue to open it?", seqName, (int)missingModels.size(), missings.c_str());
         if (wxMessageBox(msg, "Many missing models in this sequence", wxYES_NO) == wxNO) {
             mapall = true;
         }
@@ -542,15 +554,15 @@ void xLightsFrame::CheckForValidModels()
         if (ElementType::ELEMENT_TYPE_MODEL == _sequenceElements.GetElement(x)->GetType()) {
 
             // Find the model/model group for the element
-            ModelElement* me = static_cast<ModelElement*>(_sequenceElements.GetElement(x));
+            Element *el = _sequenceElements.GetElement(x);
+            ModelElement* me = static_cast<ModelElement*>(el);
             if (me != nullptr) {
                 std::string name = me->GetModelName();
-                logger_base.debug("CheckForValidModels:    Missing model: %s.", (const char*)name.c_str());
                 Model* m = AllModels[name];
 
                 // If model is not found we need to remap
                 if (m == nullptr) {
-
+                    logger_base.debug("CheckForValidModels:    Missing model: %s.", (const char*)name.c_str());
                     if (!mapall) {
                         dialog.StaticTextMessage->SetLabel("Model '" + name + "'\ndoes not exist in your list of models");
                         dialog.ChoiceModels->Set(ToArrayString(AllNames));
@@ -2258,15 +2270,18 @@ int xLightsFrame::GetCurrentPlayTime()
 void xLightsFrame::SetPlayStatus(int status) {
     playType = status;
     if (playType != PLAY_TYPE_STOPPED) {
-        OutputTimer.Start(_seqData.FrameTime(), wxTIMER_CONTINUOUS);
+        StartOutputTimer();
         //printf("Timer started - SetPlayStatus %d\n", status);
     }
 }
 void xLightsFrame::StartOutputTimer() {
+    GPURenderUtils::prioritizeGraphics(true);
     OutputTimer.Start(_seqData.FrameTime(), wxTIMER_CONTINUOUS);
-    //printf("Timer started - StartOutputTimer %d\n", playType);
 }
-
+void xLightsFrame::StopOutputTimer() {
+    OutputTimer.Stop();
+    GPURenderUtils::prioritizeGraphics(false);
+}
 bool xLightsFrame::TimerRgbSeq(long msec)
 {
     //check if there are models that depend on timing tracks or similar that need to be rendered
@@ -2847,9 +2862,9 @@ void xLightsFrame::DoLoadPerspective(wxXmlNode *perspective)
     PopTraceContext();
 
     //perspectives may have been saved without the maximize button flag, we'll
-    //make sure it's turned on
-    m_mgr->GetPane("ModelPreview").MaximizeButton(true);
-    m_mgr->GetPane("HousePreview").MaximizeButton(true);
+    //make sure it's turned on.  Make sure Dockable state matches menu options/configuration
+    m_mgr->GetPane("ModelPreview").MaximizeButton(true).Dockable(IsDockable("MP"));
+    m_mgr->GetPane("HousePreview").MaximizeButton(true).Dockable(IsDockable("HP"));
     m_mgr->GetPane("DisplayElements").MaximizeButton(true);
 
     ShowHideAllSequencerWindows(true);
@@ -2878,12 +2893,12 @@ void xLightsFrame::DoLoadPerspective(wxXmlNode *perspective)
         m_mgr->Update();
     }
 
-    if (mEffectAssistMode == EFFECT_ASSIST_ALWAYS_OFF) {
+    if (tempEffectAssistMode == EFFECT_ASSIST_ALWAYS_OFF) {
         SetEffectAssistWindowState(false);
-    } else if (mEffectAssistMode == EFFECT_ASSIST_ALWAYS_ON) {
+    } else if (tempEffectAssistMode == EFFECT_ASSIST_ALWAYS_ON) {
         bool visible = m_mgr->GetPane("EffectAssist").IsShown();
         if (!visible) {
-            mEffectAssistMode = EFFECT_ASSIST_NOT_IN_PERSPECTIVE;
+            tempEffectAssistMode = EFFECT_ASSIST_NOT_IN_PERSPECTIVE;
         }
     }
 
@@ -3131,10 +3146,14 @@ void xLightsFrame::ShowHideEffectAssistWindow(wxCommandEvent& event)
     bool visible = m_mgr->GetPane("EffectAssist").IsShown();
     if (visible) {
         m_mgr->GetPane("EffectAssist").Hide();
-        mEffectAssistMode = EFFECT_ASSIST_ALWAYS_OFF;
+        // Dont set it permanently
+        //mEffectAssistMode = EFFECT_ASSIST_ALWAYS_OFF;
+        tempEffectAssistMode = EFFECT_ASSIST_ALWAYS_OFF;
     } else {
         m_mgr->GetPane("EffectAssist").Show();
-        mEffectAssistMode = EFFECT_ASSIST_ALWAYS_ON;
+        // Dont set it permanently
+        // mEffectAssistMode = EFFECT_ASSIST_ALWAYS_ON;
+        tempEffectAssistMode = EFFECT_ASSIST_ALWAYS_ON;
     }
     m_mgr->Update();
     UpdateViewMenu();

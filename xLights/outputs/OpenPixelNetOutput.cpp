@@ -14,8 +14,9 @@
 #include <wx/xml/xml.h>
 
 #pragma region Constructs and Destructors
-OpenPixelNetOutput::OpenPixelNetOutput(SerialOutput* output) : SerialOutput(output) {
-    
+OpenPixelNetOutput::OpenPixelNetOutput(const OpenPixelNetOutput& from) :
+    SerialOutput(from)
+{
     _baudRate = GetDefaultBaudRate();
     _datalen = 0;
     memset(_data, 0x00, sizeof(_data));
@@ -44,12 +45,11 @@ bool OpenPixelNetOutput::Open() {
 
     if (!_enabled) return true;
 
+    _serialConfig[2] = '2';
     _ok = SerialOutput::Open();
 
     _datalen = _channels;
     memset(_data, 0, sizeof(_data));
-
-    _serialConfig[2] = '2';
 
     _serialBuffer[0] = 0xAA;
     _serialBuffer[1] = 0x55;

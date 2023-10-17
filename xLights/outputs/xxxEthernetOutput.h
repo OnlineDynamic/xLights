@@ -46,12 +46,16 @@ protected:
 public:
 
     #pragma region Constructors and Destructors
-    xxxEthernetOutput(wxXmlNode* node);
-    xxxEthernetOutput(xxxEthernetOutput* output);
+    xxxEthernetOutput(wxXmlNode* node, bool isActive);
+    xxxEthernetOutput(const xxxEthernetOutput& from);
     xxxEthernetOutput();
     virtual ~xxxEthernetOutput() override;
     virtual wxXmlNode* Save() override;
-    #pragma endregion 
+    virtual Output* Copy() override
+    {
+        return new xxxEthernetOutput(*this);
+    }
+#pragma endregion 
 
     #pragma region Getters and Setters
     virtual std::string GetType() const override { return OUTPUT_xxxETHERNET; }
@@ -83,5 +87,14 @@ public:
     virtual void SetOneChannel(int32_t channel, unsigned char data) override;
     virtual void SetManyChannels(int32_t channel, unsigned char data[], size_t size) override;
     virtual void AllOff() override;
-    #pragma endregion 
+    #pragma endregion
+    
+    #pragma region UI
+    #ifndef EXCLUDENETWORKUI
+    virtual void UpdateProperties(wxPropertyGrid* propertyGrid, Controller* c, ModelManager* modelManager, std::list<wxPGProperty*>& expandProperties) override;
+    virtual void AddProperties(wxPropertyGrid* propertyGrid, wxPGProperty *before, Controller *c, bool allSameSize, std::list<wxPGProperty*>& expandProperties) override;
+    virtual void RemoveProperties(wxPropertyGrid* propertyGrid) override;
+    #endif
+    #pragma endregion
+
 };

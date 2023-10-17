@@ -192,11 +192,21 @@ static int progressFunction(void* bar,
             if (pos > dlg->GetRange())
                 pos = 0;
         }
+
+        // if the client data has been set to 1 then we must not hit the top range
+        void *cd = dlg->GetClientData();
+        size_t cdi = (size_t)cd;
+        if (cdi == 1 && pos == dlg->GetRange())
+        {
+            pos = dlg->GetRange() - 1;
+        }
+
         dlg->Update(pos);
     }
 
     return 0;
 }
+#ifdef _DEBUG
 static size_t headerFunction(char* buffer, size_t size, size_t nitems, void* userdata)
 {
     static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
@@ -205,7 +215,7 @@ static size_t headerFunction(char* buffer, size_t size, size_t nitems, void* use
     }
     return size * nitems;
 }
-
+#endif
 
 std::string Curl::HTTPSPost(const std::string& url, const wxString& body, const std::string& user, const std::string& password, const std::string& contentType, int timeout, const std::vector<std::pair<std::string, std::string>>& customHeaders, int* responseCode)
 {
@@ -277,6 +287,7 @@ std::string Curl::HTTPSPost(const std::string& url, const wxString& body, const 
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.size());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (const char*)body.c_str());
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
 
         //#ifdef _DEBUG
         //            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerFunction);
@@ -349,6 +360,7 @@ std::string Curl::HTTPSPost(const std::string& url, const std::vector<Var>& vars
         curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeFunction);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
         std::string buffer = "";
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
 
@@ -400,7 +412,7 @@ std::string Curl::HTTPSGet(const std::string& s, const std::string& user, const 
         curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
         curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
-        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
 
 #ifdef __WXMSW__
         // Temporarily adding this in order to try to catch ongoing curl crashes
@@ -501,12 +513,25 @@ int Curl::CurlDebug(CURL* handle, curl_infotype type, char* data, size_t size, v
     return 0;
 }
 
-bool Curl::HTTPSGetFile(const std::string& s, const std::string& filename, const std::string& user, const std::string& password, int timeout, wxProgressDialog* prog)
+bool Curl::HTTPSGetFile(const std::string& s, const std::string& filename, const std::string& user, const std::string& password, int timeout, wxProgressDialog* prog, bool keepProgress)
 {
     static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
 #ifdef _DEBUG
     logger_base.debug("%s", (const char*)s.c_str());
 #endif
+
+    void* ocd = nullptr;
+    
+    if (prog != nullptr) {
+        ocd = prog->GetClientData();
+        if (keepProgress) {
+            prog->SetClientData((wxClientData*)1);
+        }
+        else
+        {
+            prog->SetClientData((wxClientData*)0);
+        }
+    }
 
     bool res = true;
 
@@ -528,7 +553,7 @@ bool Curl::HTTPSGetFile(const std::string& s, const std::string& filename, const
             curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
             curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
-            curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip,deflate");
+            curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
 
 #ifdef __WXMSW__
             // Temporarily adding this in order to try to catch ongoing curl crashes
@@ -586,6 +611,11 @@ bool Curl::HTTPSGetFile(const std::string& s, const std::string& filename, const
         logger_base.error("HTTPSGetFile: Failure to create file %s.", (const char*)filename.c_str());
         res = false;
     }
+
+    if (prog != nullptr) {
+        prog->SetClientData((wxClientData*)ocd);
+    }
+
     return res;
 }
 
@@ -607,7 +637,7 @@ struct HTTPFileUploadData {
     uint8_t* postData = nullptr;
     size_t postDataSize = 0;
 
-    wxProgressDialog* progress = nullptr;
+    std::function<bool(int, std::string)> progress = nullptr;
     std::string progressString;
     size_t totalWritten = 0;
     size_t lastDone = 0;
@@ -650,7 +680,7 @@ struct HTTPFileUploadData {
                 donePct /= file->Length();
                 if (donePct != lastDone) {
                     lastDone = donePct;
-                    cancelled = !progress->Update(donePct, progressString);
+                    cancelled = !progress(donePct, progressString);
                     wxYield();
                 }
             }
@@ -676,7 +706,7 @@ static size_t http_file_upload_callback(void* ptr, size_t size, size_t nmemb, vo
     return dt->readData(ptr, buffer_size);
 }
 
-bool Curl::HTTPUploadFile(const std::string& url, const std::string& filename, const std::string& file, wxProgressDialog* dlg, const std::string& username, const std::string& password)
+bool Curl::HTTPUploadFile(const std::string& url, const std::string& filename, const std::string& file, std::function<bool(int, std::string)> dlg, const std::string& username, const std::string& password)
 {
     static log4cpp::Category& logger_base = log4cpp::Category::getInstance(std::string("log_base"));
 
@@ -695,8 +725,8 @@ bool Curl::HTTPUploadFile(const std::string& url, const std::string& filename, c
 
     bool cancelled = false;
     logger_base.debug("Upload via http of %s to %s.", (const char*)filename.c_str(), (const char *)url.c_str());
-    dlg->SetTitle("HTTP Upload");
-    cancelled |= !dlg->Update(0, "Transferring " + wxFileName(file).GetFullName() + " to " + wxURL(url).GetServer());
+    //dlg->SetTitle("HTTP Upload");
+    cancelled |= !dlg(0, "Transferring " + wxFileName(file).GetFullName() + " to " + wxURL(url).GetServer());
     int lastDone = 0;
 
     CURL* curl = curl_easy_init();
@@ -710,6 +740,7 @@ bool Curl::HTTPUploadFile(const std::string& url, const std::string& filename, c
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 5000);
         curl_easy_setopt(curl, CURLOPT_TCP_FASTOPEN, 1L);
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
 
 #ifdef __WXMSW__
         // Temporarily adding this in order to try to catch ongoing curl crashes
@@ -796,7 +827,7 @@ bool Curl::HTTPUploadFile(const std::string& url, const std::string& filename, c
             logger_base.warn("Curl did not upload file:  %d -> %s   %s", response_code, (const char*)DecodeResponseCode(response_code).c_str(), error);
             cancelled = true;
         }
-        cancelled |= !dlg->Update(1000);
+        cancelled |= !dlg(1000, "");
         logger_base.info("HTTP File Upload file %s  - Return: %d - RC: %d -> %s - File: %s", url.c_str(), i, response_code, (const char*)DecodeResponseCode(response_code).c_str(), filename.c_str());
         res = !(data.cancelled || cancelled);
     }

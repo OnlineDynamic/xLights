@@ -28,6 +28,7 @@ static  std::vector<std::pair<std::string, KBSCOPE>> KeyBindingTypes =
     { "TIMING_SPLIT", KBSCOPE::Sequence },
     { "ZOOM_IN", KBSCOPE::Sequence },
     { "ZOOM_OUT", KBSCOPE::Sequence },
+    { "ZOOM_SEL", KBSCOPE::Sequence },
     { "RANDOM", KBSCOPE::Sequence },
     { "RENDER_ALL", KBSCOPE::All },
     { "SAVE_CURRENT_TAB", KBSCOPE::All },
@@ -122,7 +123,15 @@ static  std::vector<std::pair<std::string, KBSCOPE>> KeyBindingTypes =
     { "AUDIO_S_1_2_SPEED", KBSCOPE::Sequence },
     { "AUDIO_S_1_4_SPEED", KBSCOPE::Sequence },
     { "PRIOR_TAG", KBSCOPE::Sequence },
-    { "NEXT_TAG", KBSCOPE::Sequence }
+    { "NEXT_TAG", KBSCOPE::Sequence },
+    { "MODEL_TOGGLE", KBSCOPE::Sequence },
+    { "MODEL_DISABLE", KBSCOPE::Sequence },
+    { "MODEL_ENABLE", KBSCOPE::Sequence },
+    { "EFFECT_TOGGLE", KBSCOPE::Sequence },
+    { "EFFECT_DISABLE", KBSCOPE::Sequence },
+    { "EFFECT_ENABLE", KBSCOPE::Sequence },
+    { "MODEL_EFFECT_TOGGLE", KBSCOPE::Sequence }
+
 };
 
 static  std::vector<std::pair<std::string, std::string>> keyBindingTips =
@@ -130,8 +139,9 @@ static  std::vector<std::pair<std::string, std::string>> keyBindingTips =
     { "TIMING_ADD", "Add a timing mark." },
     { "TIMING_SPLIT", "Split a timing mark." },
     { "ZOOM_IN", "Zoom into the effects grid." },
-    { "ZOOM_OUT", "Zoom out of the effects grid" },
-    { "RANDOM", "Insert random effects" },
+    { "ZOOM_OUT", "Zoom out of the effects grid." },
+    { "ZOOM_SEL", "Zoom so selected timeline fills the screen." },
+    { "RANDOM", "Insert random effects." },
     { "RENDER_ALL", "Render all." },
     { "SAVE_CURRENT_TAB", "Save the currently selected tab." },
     { "LIGHTS_TOGGLE", "Toggle output to lights on/off." },
@@ -225,7 +235,14 @@ static  std::vector<std::pair<std::string, std::string>> keyBindingTips =
     { "MODEL_SUBMODELS", "Edit model submodels." },
     { "MODEL_FACES", "Edit model faces." },
     { "MODEL_STATES", "Edit model states." },
-    { "MODEL_MODELDATA", "Edit custom model data." }
+    { "MODEL_MODELDATA", "Edit custom model data." },
+    { "MODEL_TOGGLE", "Toggle (Enable/Disable) rendering of the selected model in the sequencer" },
+    { "MODEL_DISABLE", "Disable rendering of the selected model in the sequencer" },
+    { "MODEL_ENABLE", "Enable rendering of the selected model in the sequencer" },
+    { "EFFECT_TOGGLE", "Toggle (Enable/Disable) rendering of the selected effects in the sequencer" },
+    { "EFFECT_DISABLE", "Disable rendering of the selected effects in the sequencer" },
+    { "EFFECT_ENABLE", "Enable rendering of the selected effects in the sequencer" },
+    { "MODEL_EFFECT_TOGGLE", "Toggle (Enable/Disable) rendering of the selected model or the effects in the sequencer" }
 };
 
 const std::vector<KeyBinding> DefaultBindings =
@@ -269,6 +286,7 @@ const std::vector<KeyBinding> DefaultBindings =
     KeyBinding("s", false, "TIMING_SPLIT"),
     KeyBinding("+", false, "ZOOM_IN"),
     KeyBinding("-", false, "ZOOM_OUT"),
+    KeyBinding("", false, "ZOOM_SEL"),
     KeyBinding(std::string("R"), false, "RANDOM", false, false, true),
     KeyBinding("F1", false, "EFFECT_SETTINGS_TOGGLE", true),
     KeyBinding("F8", false, "EFFECT_ASSIST_TOGGLE", true),

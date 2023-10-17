@@ -19,7 +19,7 @@
 
 #include <wx/propgrid/propgrid.h>
 #include <wx/propgrid/advprops.h>
-
+#include "../UtilFunctions.h"
 #include "Output.h"
 
 class wxXmlNode;
@@ -65,8 +65,10 @@ protected:
     std::string _model;                      // the model of the controller
     std::string _variant;                    // the variant of the controller
     bool _suppressDuplicateFrames = false;   // should we suppress duplicate fromes
+    bool _monitor = true;                    // should FPP/player monitor this output (Ping) for connectivity
     Output::PINGSTATE _lastPingResult = Output::PINGSTATE::PING_UNKNOWN; // last ping result
     bool _tempDisable = false;
+    bool _fromBase = false;
 
     std::map<std::string, std::string> _runtimeProperties;  // place to store various properties/state/etc that may be needed at runtime
 #pragma endregion
@@ -76,8 +78,11 @@ public:
     #pragma region Constructors and Destructors
     Controller(OutputManager* om, wxXmlNode* node, const std::string& showDir);
     Controller(OutputManager* om);
+    Controller(OutputManager* om, const Controller& from);
     virtual ~Controller();
     virtual wxXmlNode* Save();
+    virtual Controller* Copy(OutputManager* om) = 0;
+    virtual bool UpdateFrom(Controller* from);
     #pragma endregion
 
     #pragma region Static Functions
@@ -108,6 +113,19 @@ public:
 
     bool IsDirty() const;
     void ClearDirty();
+
+    void SetFromBase(bool base)
+    {
+        if (_fromBase != base)
+        {
+            _dirty = true;
+            _fromBase = base;
+        }
+    }
+    bool IsFromBase() const
+    {
+        return _fromBase;
+    }
 
     const std::string& GetName() const { return _name; }
     void SetName(const std::string& name) { if (_name != name) { _name = name; _dirty = true; } }
@@ -145,23 +163,28 @@ public:
     Controller::ACTIVESTATE GetActive() const { return _active; }
     virtual bool IsActive() const;
     void SetActive(const std::string& active);
+    virtual void PostSetActive()
+    {}
 
     virtual bool CanVisualise() const;
 
     bool IsOk() const { return _ok; }
 
     const std::string &GetVendor() const { return _vendor; }
-    void SetVendor(const std::string& vendor) { if (_vendor != vendor) { _vendor = vendor; _dirty = true; VMVChanged(); } }
+    void SetVendor(const std::string& vendor, wxPropertyGrid *grid = nullptr) { if (_vendor != vendor) { _vendor = vendor; _dirty = true; VMVChanged(grid); } }
     const std::string &GetModel() const { return _model; }
-    void SetModel(const std::string& model) { if (_model != model) { _model = model; _dirty = true; VMVChanged(); } }
+    void SetModel(const std::string& model, wxPropertyGrid *grid = nullptr) { if (_model != model) { _model = model; _dirty = true; VMVChanged(grid); } }
     const std::string &GetVariant() const { return _variant; }
-    void SetVariant(const std::string& variant) { if (_variant != variant) { _variant = variant; _dirty = true;  VMVChanged(); } }
+    void SetVariant(const std::string& variant, wxPropertyGrid *grid = nullptr) { if (_variant != variant) { _variant = variant; _dirty = true;  VMVChanged(grid); } }
     std::string GetVMV() const;
     ControllerCaps* GetControllerCaps() const;
     void SearchForNewVendor( std::string const& vendor, std::string const& model, std::string const& variant);
 
     bool IsSuppressDuplicateFrames() const { return _suppressDuplicateFrames; }
     void SetSuppressDuplicateFrames(bool suppress);
+
+    bool IsMonitoring() const { return _monitor; }
+    void SetMonitoring(bool monitor);
 
     void SetGlobalFPPProxy(const std::string& globalFPPProxy);
 
@@ -188,7 +211,7 @@ public:
     virtual bool SupportsAutoLayout() const;
     virtual bool IsManaged() const = 0;
     virtual bool CanSendData() const { return true; }
-    virtual void VMVChanged() {}
+    virtual void VMVChanged(wxPropertyGrid *grid = nullptr) {}
 
     virtual bool CanTempDisable() const { return false; }
     void TempDisable(bool disable)
@@ -258,7 +281,10 @@ public:
 
     virtual std::string GetSortName() const { return GetName(); }
     virtual std::string GetExport() const = 0;
-
+    
+    virtual std::string GetJSONData() const;
+    virtual std::string GetCapJSONData() const;
+    
     #pragma endregion
 
     #pragma region Operators
@@ -267,6 +293,10 @@ public:
 
     #pragma region UI
     #ifndef EXCLUDENETWORKUI
+        void AddModels(wxPGProperty* property, wxPGProperty* vp);
+        void AddVariants(wxPGProperty* property);
+
+        virtual void UpdateProperties(wxPropertyGrid* propertyGrid, ModelManager* modelManager, std::list<wxPGProperty*>& expandProperties);
         virtual void AddProperties(wxPropertyGrid* propertyGrid, ModelManager* modelManager, std::list<wxPGProperty*>& expandProperties);
 	    virtual bool HandlePropertyEvent(wxPropertyGridEvent& event, OutputModelManager* outputModelManager);
         virtual void ValidateProperties(OutputManager* om, wxPropertyGrid* propGrid) const;
