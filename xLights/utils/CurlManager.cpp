@@ -70,6 +70,11 @@ static size_t urlReadData(void* ptr, size_t size, size_t nmemb, void* userp) {
     dt->curPos += numb;
     return numb;
 }
+static int urlSeekData(void *userp, curl_off_t offset, int origin) {
+    CurlManager::CurlPrivateData* dt = (CurlManager::CurlPrivateData*)userp;
+    dt->curPos = offset;
+    return CURL_SEEKFUNC_OK;
+}
 CURL* CurlManager::createCurl(const std::string& fullUrl, CurlPrivateData** cpd, bool upload) {
     static std::string USERAGENT = wxAppConsole::GetInstance()->GetAppName().ToStdString() + "-" + xlights_version_string;
 
@@ -81,25 +86,33 @@ CURL* CurlManager::createCurl(const std::string& fullUrl, CurlPrivateData** cpd,
     curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, 4000L);
     curl_easy_setopt(c, CURLOPT_TIMEOUT_MS, 12000L);
     curl_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
-    curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1);
+    curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
     //curl_easy_setopt(c, CURLOPT_VERBOSE, 2L);
     curl_easy_setopt(c, CURLOPT_UPKEEP_INTERVAL_MS, 5000L);
 
     curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, urlWriteData);
     CurlPrivateData* data = new CurlPrivateData();
     data->host = host;
+    if (hd->allowHTTP0_9) {
+        curl_easy_setopt(c, CURLOPT_HTTP09_ALLOWED, 1L);
+        data->isHTTP_0_9 = true;
+    }
     curl_easy_setopt(c, CURLOPT_ERRORBUFFER, data->errorResp);
     curl_easy_setopt(c, CURLOPT_WRITEDATA, &data->resp);
     curl_easy_setopt(c, CURLOPT_PRIVATE, data);
     if (hd->username != "") {
         curl_easy_setopt(c, CURLOPT_USERNAME, hd->username.c_str());
         curl_easy_setopt(c, CURLOPT_PASSWORD, hd->password.c_str());
-        curl_easy_setopt(c, CURLOPT_HTTPAUTH, CURLAUTH_BASIC | CURLAUTH_DIGEST | CURLAUTH_NEGOTIATE);
+        curl_easy_setopt(c, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     }
     if (upload) {
         data->req = new std::vector<uint8_t>();
+        curl_easy_setopt(c, CURLOPT_UPLOAD_BUFFERSIZE, 1024 * 1024);
+        curl_easy_setopt(c, CURLOPT_BUFFERSIZE, 1024 * 1024);
         curl_easy_setopt(c, CURLOPT_READDATA, data);
         curl_easy_setopt(c, CURLOPT_READFUNCTION, urlReadData);
+        curl_easy_setopt(c, CURLOPT_SEEKDATA, data);
+        curl_easy_setopt(c, CURLOPT_SEEKFUNCTION, urlSeekData);
     }
     if (cpd) {
         *cpd = data;
@@ -125,14 +138,19 @@ void CurlManager::add(const std::string& furl, const std::string& method, const 
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     }
 
-    if ((method == "POST") || (method == "PUT")) {
-        curl_easy_setopt(curl, CURLOPT_COPYPOSTFIELDS, data.c_str());
-    }
-
     struct curl_slist* headers = NULL;
     for (auto& h : extraHeaders) {
         headers = curl_slist_append(headers, h.c_str());
     }
+
+    if ((method == "POST") || (method == "PUT")) {
+        curl_easy_setopt(curl, CURLOPT_COPYPOSTFIELDS, data.c_str());
+        // turn off the Expect continue thing
+        headers = curl_slist_append(headers, "Expect:");
+    } else if (method == "PATCH") {
+        headers = curl_slist_append(headers, "Expect:");
+    }
+
     if (headers) {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     }
@@ -173,8 +191,7 @@ std::string CurlManager::doGet(const std::string& furl, int& rc) {
     logger_curl.info("Adding Synchronous CURL - URL: %s    Method: GET", furl.c_str());
     
     bool done = false;
-    addCURL(
-        furl, curl, [&done](CURL* c) { done = true; }, false);
+    addCURL(furl, curl, [&done](CURL* c) { done = true; }, false);
     while (!done && processCurls()) {
         wxYieldIfNeeded();
     }
@@ -185,7 +202,7 @@ std::string CurlManager::doGet(const std::string& furl, int& rc) {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &rc2);
     rc = rc2;
     std::string resp;
-    if (rc) {
+    if (rc || data->isHTTP_0_9) {
         resp.assign(reinterpret_cast<char*>(data->resp.data()), data->resp.size());
     } else {
         resp = data->errorResp;
@@ -214,6 +231,12 @@ static size_t read_callback(void* ptr, size_t size, size_t nmemb, void* userp) {
     dt->curPos += numb;
     return numb;
 }
+
+static int seek_callback(void *userp, curl_off_t offset, int origin) {
+    struct ReadDataInfo* dt = (struct ReadDataInfo*)userp;
+    dt->curPos = offset;
+    return CURL_SEEKFUNC_OK;
+}
 std::string CurlManager::doPost(const std::string& furl, const std::string& contentType, const std::vector<uint8_t>& data, int& rc) {
     static log4cpp::Category& logger_curl = log4cpp::Category::getInstance(std::string("log_curl"));
     logger_curl.info("Adding Synchronous CURL - URL: %s    Method: POST", furl.c_str());
@@ -225,6 +248,7 @@ std::string CurlManager::doPost(const std::string& furl, const std::string& cont
     head = curl_slist_append(head, ct.c_str());
     std::string cl = "Content-Length: " + std::to_string(data.size());
     head = curl_slist_append(head, cl.c_str());
+    head = curl_slist_append(head, "Expect:");
 
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, head);
@@ -235,11 +259,12 @@ std::string CurlManager::doPost(const std::string& furl, const std::string& cont
 
     curl_easy_setopt(curl, CURLOPT_READDATA, &dta);
     curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+    curl_easy_setopt(curl, CURLOPT_SEEKDATA, &dta);
+    curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, seek_callback);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)data.size());
 
     bool done = false;
-    addCURL(
-        furl, curl, [&done](CURL* c) { done = true; }, false);
+    addCURL(furl, curl, [&done](CURL* c) { done = true; }, false);
     while (!done && processCurls()) {
         wxYieldIfNeeded();
     }
@@ -250,7 +275,7 @@ std::string CurlManager::doPost(const std::string& furl, const std::string& cont
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &rc2);
     rc = rc2;
     std::string resp;
-    if (rc) {
+    if (rc || cdata->isHTTP_0_9) {
         resp.assign(reinterpret_cast<char*>(cdata->resp.data()), cdata->resp.size());
     } else {
         resp = cdata->errorResp;
@@ -263,6 +288,13 @@ std::string CurlManager::doPost(const std::string& furl, const std::string& cont
 
     return resp;
 }
+std::string CurlManager::doPost(const std::string& furl, const std::string& contentType, const std::string &data, int& rc) {
+    std::vector<uint8_t> vdata;
+    vdata.resize(data.size());
+    memcpy((void*)&vdata[0], (void*)data.c_str(), data.size());
+    return doPost(furl, contentType, vdata,  rc);
+}
+
 std::string CurlManager::doPut(const std::string& furl, const std::string& contentType, const std::vector<uint8_t>& data, int& rc) {
     static log4cpp::Category& logger_curl = log4cpp::Category::getInstance(std::string("log_curl"));
     logger_curl.info("Adding Synchronous CURL - URL: %s    Method: PUT", furl.c_str());
@@ -273,6 +305,7 @@ std::string CurlManager::doPut(const std::string& furl, const std::string& conte
     head = curl_slist_append(head, ct.c_str());
     std::string cl = "Content-Length: " + std::to_string(data.size());
     head = curl_slist_append(head, cl.c_str());
+    head = curl_slist_append(head, "Expect:");
 
     curl_easy_setopt(curl, CURLOPT_PUT, 1L);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, head);
@@ -283,10 +316,11 @@ std::string CurlManager::doPut(const std::string& furl, const std::string& conte
 
     curl_easy_setopt(curl, CURLOPT_READDATA, &dta);
     curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+    curl_easy_setopt(curl, CURLOPT_SEEKDATA, &dta);
+    curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, seek_callback);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)data.size());
 
-    addCURL(
-        furl, curl, [](CURL* c) {}, false);
+    addCURL(furl, curl, [](CURL* c) {}, false);
     while (processCurls()) {
         wxYieldIfNeeded();
     }
@@ -297,7 +331,7 @@ std::string CurlManager::doPut(const std::string& furl, const std::string& conte
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &rc2);
     rc = rc2;
     std::string resp;
-    if (rc) {
+    if (rc || cdata->isHTTP_0_9) {
         resp.assign(reinterpret_cast<char*>(cdata->resp.data()), cdata->resp.size());
     } else {
         resp = cdata->errorResp;
@@ -307,6 +341,12 @@ std::string CurlManager::doPut(const std::string& furl, const std::string& conte
     curl_slist_free_all(head);
     curl_easy_cleanup(curl);
     return resp;
+}
+std::string CurlManager::doPut(const std::string& furl, const std::string& contentType, const std::string &data, int& rc) {
+    std::vector<uint8_t> vdata;
+    vdata.resize(data.size());
+    memcpy((void*)&vdata[0], (void*)data.c_str(), data.size());
+    return doPut(furl, contentType, vdata,  rc);
 }
 
 bool CurlManager::doProcessCurls() {
@@ -365,6 +405,11 @@ void CurlManager::setHostUsernamePassword(const std::string& host, const std::st
     HostData* h = getHostData(host);
     h->username = username;
     h->password = password;
+}
+void CurlManager::setHostAllowHTTP_0_9(const std::string &host, bool v) {
+    std::unique_lock<std::mutex> l(lock);
+    HostData* h = getHostData(host);
+    h->allowHTTP0_9 = v;
 }
 
 std::string CurlManager::getHost(const std::string& url) {

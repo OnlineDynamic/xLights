@@ -11,6 +11,83 @@ Issue Tracker is found here: www.github.com/smeighan/xLights/issues
 
 XLIGHTS/NUTCRACKER RELEASE NOTES
 ---------------------------------
+   -- bug (scott)     Fix Import Dialog Groups Blue turning white.
+2023.22 Dec 5, 2023
+   -- enh (claudio)   Add virtual matrix to xSchedule using RGBW data
+   -- enh (lutz)      Add palette shift buttons
+   -- enh (scott)     Add cycles and scale to ripple effect
+   -- enh (scott)     Add set smart remote and increment to visualiser
+   -- enh (scott)     Add importing submodels as states
+   -- enh (scott)     Add more controller connection property setting to the visualiser
+   -- enh (keith)     Show progress in batch render including number left to render
+   -- enh (keith)     Add model aliases used to improve automap and handling opening sequences with model names that have changed
+   -- enh (keith)     Add an adjust effect - primarily for use on DMX effects to modify results without changing the underlying effects
+   -- enh (keith)     Add support for non-zig zagging trees with multiple strands but one string
+   -- enh (dartunder) Add bulk edit to clear shadow models
+   -- bug (dartunder) Fix 3 point model dimensions incorrect
+   -- bug (keith)     Fix Falcon V4 upload without full xlights control should not override port brightness
+   -- bug (keith)     Fix layout model locking menu items inconsistently available
+   -- bug (keith)     Fix Falcon V4/V5 reversed not uploading correctly
+   -- bug (keith)     Fix click on import effect count column does not sort by effect count
+   -- bug (keith)     Fix servo effect incompletely resets parameters
+   -- bug (keith)     Fix Eseq playback on xSchedule
+   -- bug (keith)     Fix default superstring to RGB handling
+   -- bug (scott)     Fix FPP compatible audio file types incomplete
+   -- bug (scott)     Fix missing bulk edit from some face effect properties
+   -- bug (dkulp)     Fix 4GB+ uncompressed FSEQ files
+   -- bug (dkulp)     Fix crash on player only controllers
+   -- bug (dkulp)     Fix OSX font crash
+2023.21 Nov 25, 2023
+   -- enh (dkulp) Allow upload of config to inactive controllers
+   -- enh (scott) Add More Right Click Options to Multi-Controller Upload, Save/Load Selected
+   -- enh (scott) FPP Connect - Add Falcon V5 Support
+   -- enh (keith) Downgrade sketch effect image missing to warning and allow suppression of the warning in preferences.
+   -- enh (scott) FPP Connect - add Genius FSEQ upload
+   -- bug (dkulp) FPP Connect - fix crash with discovery/fpp connect if "Player Only" controller configured
+   -- bug (billnapier) Remove invisible unicode character in AlphxPix 4 settings
+   -- bug (dkulp) Fix Faces on models from Base show directory will always trigger the "dirty" flag
+   -- bug (keith) Fix copy on empty cell overwrites clipboard
+   -- bug (dkulp) Retry FSEQ upload on errors (up to three times)
+   -- bug (scott) HinkxPix won't allow assignment to smart receiver 3-9
+   -- bug (dartunder) Fix face blink effect
+   -- bug (keith) Fix eyes closed not mapping correctly
+   -- bug (keith) Fix PixLite config retrieval
+2023.20 Nov 15, 2023
+   -- enh (scott) FPP Connect - Remove ancient FPP 1.x upload via mounted USB
+   -- enh (scott) FPP Connect - Add ability to upload Proxy Controller IPs
+   -- enh (MrPierreB) Selectively Offset parameters on remap of dmx channels
+   -- enh (keith) Add a quick way to make a block of ports a dumb receiver
+   -- enh (kylegrymonprez)  Adding ability to adjust the frequency of the "Auto" eye blink
+   -- enh (degracode ) Allow the Setup tab's Activate, Activate in xLights, Deactivate, and Unlink From Base menu items to be used when multiple controllers are selected
+   -- enh (keith) Add option to remove placeholders from submodels
+   -- enh (scott) Make ModelChainDialog growable
+   -- enh (dartunder) Show fpp connect results in status bar
+   -- bug (djulien) Allow Preview to be selected when showing 3D models
+   -- bug (dartunder) Fix delete warning for locked models, delete all models including locked after confirmation dialog.
+   -- bug (dkulp) FPP String upload: don't upload "DUMMY" entries
+   -- bug (keith) Show smart remotes as 0-15 on HinksPix
+   -- bug (dartunder) Fix undo for replace model command
+   -- bug (scott) Fix alphapix upload
+   -- bug (keith) Fix crash in Check Sequence in liquid effect
+2023.19 Nov 4, 2023
+   -- enh (keith) Add webp image support
+   -- enh (dartunder) Add warning and make it easier to see that a model had a shadow model in visualizer
+   -- bug (Daniel Hacquebord) Fix dark mode for shadow models in visualizer
+   -- bug (scott) Fix AlphaPix upload
+   -- bug (keith) Fix crash with liquid effect on large models
+   -- bug (scott) LUA Script: Select Sequences and deselect highlighted does nothing
+   -- bug (dkulp) FPP Connect: not uploading serial outputs from FPP Connect (worked fine from controller page)
+   -- bug (dkulp) FPP Connect: not able to upload to FPP instances with UI password set
+   -- bug (dkulp) Fix crash on MacOS with RotoZoom if GPU is busy
+   -- bug (dkulp) Workaround some other common crashes, but underlying cause of crash still under investigation
+2023.18 Oct 21, 2023
+   -- enh (dkulp) FPP Connect - query and media in parallel
+   -- bug (scott) Custom Model Export - Export Default Render Buffer as Submodel
+   -- bug (scott) Fix Submodel Dialog Sizing Issues
+   -- bug (dartunder) FPP upload - fix e1.31 priority not being set if universes are all the same size
+   -- bug (scott) HinksPix - fix folder and filter selector
+   -- bug (dkulp) FPP Connect - attempt to fix some FPP Connect issues by remove "Expect: Continue" headers
+   -- bug (robfallone) Fix OpenGL crash on startup with some mesh objects
 2023.17 Oct 16, 2023
    -- enh (dkulp) Add monitor attribute for controllers, FPP upload of co-universes will set priority/monitoring/deDup settings
    -- enh (Kyle Grymonprez) Add Node Count to model tooltips

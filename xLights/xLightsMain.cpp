@@ -124,6 +124,8 @@
 
 #include <xlsxwriter.h>
 
+#include "wxWEBPHandler/wx/imagwebp.h"
+
 //(*InternalHeaders(xLightsFrame)
 #include <wx/bitmap.h>
 #include <wx/image.h>
@@ -1873,6 +1875,7 @@ xLightsFrame::xLightsFrame(wxWindow* parent, int ab, wxWindowID id, bool renderO
     EnableNetworkChanges();
 
     wxImage::AddHandler(new wxGIFHandler);
+    wxImage::AddHandler(new wxWEBPHandler);
 
     config->Read("xLightse131Sync", &me131Sync, false);
     _outputManager.SetSyncEnabled(me131Sync);
@@ -5022,7 +5025,7 @@ std::string xLightsFrame::CheckSequence(bool displayInEditor, bool writeToFile)
             for (const auto& itc : _outputManager.GetControllers()) {
                 auto eth = dynamic_cast<ControllerEthernet*>(itc);
                 if (eth != nullptr) {
-                    if (eth != it && it->GetIP() != "MULTICAST" && (it->GetIP() == eth->GetIP() || it->GetIP() == eth->GetResolvedIP())) {
+                    if (eth != it && it->GetIP() != "MULTICAST" && (it->GetIP() == eth->GetIP() || it->GetIP() == eth->GetResolvedIP(false))) {
                         wxString msg = wxString::Format("    ERR: %s IP Address '%s' for controller '%s' used on another controller '%s'. This is not allowed.",
                                                         (const char*)it->GetProtocol().c_str(),
                                                         (const char*)it->GetIP().c_str(),
@@ -6353,7 +6356,7 @@ void xLightsFrame::ValidateEffectAssets()
     }
 
     if (missing != "" && (_promptBatchRenderIssues || (!_renderMode && !_checkSequenceMode))) {
-        wxMessageBox("Sequence references files which cannot be found:\n" + missing + "\n Use Tools/Check Sequence for more details.", "Missing assets");
+        wxMessageBox("Sequence references files which cannot be found:\nShow Folder: " + showDirectory + "\n" + missing + "\n Use Tools/Check Sequence for more details.", "Missing assets");
     }
 }
 
@@ -8747,12 +8750,8 @@ void xLightsFrame::SetSnapToTimingMarks(bool b)
 
 void xLightsFrame::PurgeDownloadCache()
 {
-    VendorModelDialog::GetCache().ClearCache();
-    VendorModelDialog::GetCache().Save();
-    VendorMusicDialog::GetCache().ClearCache();
-    VendorMusicDialog::GetCache().Save();
-    ShaderDownloadDialog::GetCache().ClearCache();
-    ShaderDownloadDialog::GetCache().Save();
+    CachedFileDownloader::GetDefaultCache().ClearCache();
+    CachedFileDownloader::GetDefaultCache().Save();
 }
 
 bool xLightsFrame::GetRecycleTips() const
